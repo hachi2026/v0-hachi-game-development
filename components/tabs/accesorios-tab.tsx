@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useHachi } from '@/lib/hachi-context'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
 import { 
   Package, 
   Gift, 
@@ -19,9 +20,12 @@ import {
   Home,
   CircleDollarSign,
   Coins,
-  Check
+  Check,
+  Eye,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
-import { formatNumber, getRarityColor, getRarityBgColor, CHEST_CONFIGS } from '@/lib/game-config'
+import { formatNumber, getRarityColor, getRarityBgColor, CHEST_CONFIGS, RANKING_POINTS } from '@/lib/game-config'
 import type { Accessory, Chest, ChestDeposit, UserAccessory } from '@/lib/types'
 
 const ACCESSORY_ICONS: Record<string, React.ReactNode> = {
@@ -34,7 +38,7 @@ const ACCESSORY_ICONS: Record<string, React.ReactNode> = {
 }
 
 export function AccesoriosTab() {
-  const { user, refreshUser, updateBalance } = useHachi()
+  const { user, refreshUser, updateBalance, updateRankingPoints } = useHachi()
   const [accessories, setAccessories] = useState<Accessory[]>([])
   const [userAccessories, setUserAccessories] = useState<UserAccessory[]>([])
   const [chests, setChests] = useState<Chest[]>([])
@@ -42,6 +46,8 @@ export function AccesoriosTab() {
   const [loading, setLoading] = useState(true)
   const [depositing, setDepositing] = useState<string | null>(null)
   const [equipping, setEquipping] = useState<string | null>(null)
+  const [expandedChest, setExpandedChest] = useState<string | null>(null)
+  const [customAmount, setCustomAmount] = useState<Record<string, string>>({})
 
   const supabase = createClient()
 
@@ -53,7 +59,6 @@ export function AccesoriosTab() {
     try {
       setLoading(true)
       
-      // Fetch all accessories
       const { data: accs } = await supabase
         .from('accessories')
         .select('*')
@@ -62,7 +67,6 @@ export function AccesoriosTab() {
       
       if (accs) setAccessories(accs)
 
-      // Fetch user's accessories
       if (user) {
         const { data: userAccs } = await supabase
           .from('user_accessories')
@@ -72,7 +76,6 @@ export function AccesoriosTab() {
         if (userAccs) setUserAccessories(userAccs)
       }
 
-      // Fetch chests
       const { data: ch } = await supabase
         .from('chests')
         .select('*')
@@ -80,7 +83,6 @@ export function AccesoriosTab() {
       
       if (ch) setChests(ch)
 
-      // Fetch user's chest deposits
       if (user) {
         const { data: deps } = await supabase
           .from('chest_deposits')
@@ -97,8 +99,12 @@ export function AccesoriosTab() {
     }
   }
 
+  const getAccessoriesForTier = (tier: string) => {
+    return accessories.filter(a => a.tier === tier)
+  }
+
   const handleDeposit = async (chest: Chest, depositAmount: number) => {
-    if (!user || depositing) return
+    if (!user || depositing || depositAmount <= 0) return
     
     if (user.profile.hachi_balance < depositAmount) {
       alert('No tienes suficiente HACHI')
@@ -108,25 +114,20 @@ export function AccesoriosTab() {
     setDepositing(chest.id)
     
     try {
-      // Find existing deposit for this chest
       let existingDeposit = deposits.find(d => d.chest_id === chest.id)
+      const newTotal = (existingDeposit?.hachi_deposited || 0) + depositAmount
+      const isCompleting = newTotal >= chest.hachi_cost
       
       if (existingDeposit) {
-        // Update existing deposit
-        const newTotal = existingDeposit.hachi_deposited + depositAmount
-        
-        if (newTotal >= chest.hachi_cost) {
-          // Complete the chest - award random accessory
+        if (isCompleting) {
           const { data: tierAccessories } = await supabase
             .from('accessories')
             .select('*')
             .eq('tier', chest.tier)
           
           if (tierAccessories && tierAccessories.length > 0) {
-            // Pick random accessory
             const randomAccessory = tierAccessories[Math.floor(Math.random() * tierAccessories.length)]
             
-            // Update deposit as completed
             await supabase
               .from('chest_deposits')
               .update({
@@ -137,48 +138,38 @@ export function AccesoriosTab() {
               })
               .eq('id', existingDeposit.id)
             
-            // Add accessory to user
             await supabase
               .from('user_accessories')
-              .insert({
+              .upsert({
                 user_id: user.profile.id,
                 accessory_id: randomAccessory.id
-              })
+              }, { onConflict: 'user_id,accessory_id' })
             
-            // Deduct HACHI
             await supabase
               .from('profiles')
               .update({ hachi_balance: user.profile.hachi_balance - depositAmount })
               .eq('id', user.profile.id)
             
             updateBalance(-depositAmount)
+            updateRankingPoints(RANKING_POINTS.openChest)
             alert(`Felicidades! Ganaste: ${randomAccessory.name}`)
           }
         } else {
-          // Just add to deposit
           await supabase
             .from('chest_deposits')
             .update({ hachi_deposited: newTotal })
             .eq('id', existingDeposit.id)
           
-          // Deduct HACHI
           await supabase
             .from('profiles')
             .update({ hachi_balance: user.profile.hachi_balance - depositAmount })
             .eq('id', user.profile.id)
           
           updateBalance(-depositAmount)
+          updateRankingPoints(RANKING_POINTS.depositToChest)
         }
       } else {
-        // Create new deposit
-        const newDeposit = {
-          user_id: user.profile.id,
-          chest_id: chest.id,
-          hachi_deposited: depositAmount
-        }
-        
-        if (depositAmount >= chest.hachi_cost) {
-          // Instant complete
+        if (isCompleting) {
           const { data: tierAccessories } = await supabase
             .from('accessories')
             .select('*')
@@ -190,7 +181,9 @@ export function AccesoriosTab() {
             await supabase
               .from('chest_deposits')
               .insert({
-                ...newDeposit,
+                user_id: user.profile.id,
+                chest_id: chest.id,
+                hachi_deposited: depositAmount,
                 completed: true,
                 accessory_won: randomAccessory.id,
                 completed_at: new Date().toISOString()
@@ -198,10 +191,10 @@ export function AccesoriosTab() {
             
             await supabase
               .from('user_accessories')
-              .insert({
+              .upsert({
                 user_id: user.profile.id,
                 accessory_id: randomAccessory.id
-              })
+              }, { onConflict: 'user_id,accessory_id' })
             
             await supabase
               .from('profiles')
@@ -209,10 +202,15 @@ export function AccesoriosTab() {
               .eq('id', user.profile.id)
             
             updateBalance(-depositAmount)
+            updateRankingPoints(RANKING_POINTS.openChest)
             alert(`Felicidades! Ganaste: ${randomAccessory.name}`)
           }
         } else {
-          await supabase.from('chest_deposits').insert(newDeposit)
+          await supabase.from('chest_deposits').insert({
+            user_id: user.profile.id,
+            chest_id: chest.id,
+            hachi_deposited: depositAmount
+          })
           
           await supabase
             .from('profiles')
@@ -220,9 +218,11 @@ export function AccesoriosTab() {
             .eq('id', user.profile.id)
           
           updateBalance(-depositAmount)
+          updateRankingPoints(RANKING_POINTS.depositToChest)
         }
       }
       
+      setCustomAmount({ ...customAmount, [chest.id]: '' })
       fetchData()
       refreshUser()
     } catch (error) {
@@ -244,6 +244,10 @@ export function AccesoriosTab() {
         .from('user_accessories')
         .update({ hachi_id: isEquipped ? null : user.hachi.id })
         .eq('id', userAccessory.id)
+      
+      if (!isEquipped) {
+        updateRankingPoints(RANKING_POINTS.equipAccessory)
+      }
       
       fetchData()
       refreshUser()
@@ -301,15 +305,22 @@ export function AccesoriosTab() {
 
         {/* Cofres Tab */}
         <TabsContent value="cofres" className="space-y-4 mt-4">
-          <p className="text-sm text-muted-foreground text-center">
-            Deposita HACHI para abrir cofres y ganar accesorios aleatorios
-          </p>
+          <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg">
+            <span className="text-sm">Tu Balance HACHI</span>
+            <div className="flex items-center gap-1">
+              <Coins className="w-4 h-4 text-primary" />
+              <span className="font-bold">{formatNumber(user?.profile.hachi_balance || 0)}</span>
+            </div>
+          </div>
           
           {chests.map((chest) => {
             const deposit = deposits.find(d => d.chest_id === chest.id)
             const deposited = deposit?.hachi_deposited || 0
             const progress = (deposited / chest.hachi_cost) * 100
+            const remaining = chest.hachi_cost - deposited
             const config = CHEST_CONFIGS.find(c => c.tier === chest.tier)
+            const tierAccessories = getAccessoriesForTier(chest.tier)
+            const isExpanded = expandedChest === chest.id
             
             return (
               <Card key={chest.id} className={`${getRarityBgColor(config?.rarity || 'common')} border-0`}>
@@ -341,29 +352,87 @@ export function AccesoriosTab() {
                       <span>Progreso</span>
                       <span>{formatNumber(deposited)} / {formatNumber(chest.hachi_cost)}</span>
                     </div>
-                    <Progress value={progress} className="h-2" />
+                    <Progress value={progress} className="h-3" />
+                    {deposited > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Faltan {formatNumber(remaining)} HACHI para abrir
+                      </p>
+                    )}
                   </div>
 
-                  {/* Deposit buttons */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {[10, 50, 100].map(percent => {
-                      const amount = Math.floor(chest.hachi_cost * (percent / 100))
-                      const remaining = chest.hachi_cost - deposited
+                  {/* Custom deposit input */}
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      type="number"
+                      placeholder="Cantidad a depositar"
+                      value={customAmount[chest.id] || ''}
+                      onChange={(e) => setCustomAmount({ ...customAmount, [chest.id]: e.target.value })}
+                      className="flex-1"
+                    />
+                    <Button
+                      disabled={
+                        depositing === chest.id || 
+                        !user || 
+                        !customAmount[chest.id] || 
+                        parseInt(customAmount[chest.id]) <= 0 ||
+                        user.profile.hachi_balance < parseInt(customAmount[chest.id] || '0')
+                      }
+                      onClick={() => handleDeposit(chest, Math.min(parseInt(customAmount[chest.id] || '0'), remaining))}
+                    >
+                      {depositing === chest.id ? '...' : 'Depositar'}
+                    </Button>
+                  </div>
+
+                  {/* Quick deposit buttons */}
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {[10, 25, 50, 100].map(percent => {
+                      const amount = percent === 100 ? remaining : Math.floor(chest.hachi_cost * (percent / 100))
                       const depositAmount = Math.min(amount, remaining)
+                      const canDeposit = user && user.profile.hachi_balance >= depositAmount && depositAmount > 0
                       
                       return (
                         <Button
                           key={percent}
                           variant="outline"
                           size="sm"
-                          disabled={depositing === chest.id || !user || user.profile.hachi_balance < depositAmount || remaining <= 0}
+                          disabled={depositing === chest.id || !canDeposit}
                           onClick={() => handleDeposit(chest, depositAmount)}
                         >
-                          {depositing === chest.id ? '...' : `+${formatNumber(depositAmount)}`}
+                          {percent === 100 ? 'MAX' : `${percent}%`}
                         </Button>
                       )
                     })}
                   </div>
+
+                  {/* View possible prizes */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setExpandedChest(isExpanded ? null : chest.id)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Ver premios posibles
+                    {isExpanded ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
+                  </Button>
+
+                  {/* Possible prizes list */}
+                  {isExpanded && (
+                    <div className="mt-4 p-3 bg-background/50 rounded-lg space-y-2">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Premios disponibles en este cofre ({tierAccessories.length} items):
+                      </p>
+                      {tierAccessories.map(acc => (
+                        <div key={acc.id} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+                          <div className="flex items-center gap-2">
+                            {ACCESSORY_ICONS[acc.type]}
+                            <span className="text-sm">{acc.name}</span>
+                          </div>
+                          <span className="text-xs text-amber-500">+{acc.daily_production} KOBAN/dia</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )

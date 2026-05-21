@@ -13,6 +13,7 @@ interface HachiContextType {
   setActiveTab: (tab: TabType) => void
   refreshUser: () => Promise<void>
   updateBalance: (amount: number, token?: 'hachi' | 'koban') => void
+  updateRankingPoints: (points: number) => void
   signOut: () => Promise<void>
   currentSeason: Season | null
   userRanking: Ranking | null
@@ -178,6 +179,39 @@ export function HachiProvider({ children }: { children: ReactNode }) {
     setActiveTab('home')
   }, [supabase])
 
+  const updateRankingPoints = useCallback(async (points: number) => {
+    if (!user || !currentSeason) return
+    
+    try {
+      // Update ranking points in database
+      if (userRanking) {
+        await supabase
+          .from('rankings')
+          .update({ points: userRanking.points + points })
+          .eq('id', userRanking.id)
+        
+        setUserRanking(prev => prev ? { ...prev, points: prev.points + points } : null)
+      } else {
+        // Create new ranking entry
+        const { data } = await supabase
+          .from('rankings')
+          .insert({
+            user_id: user.profile.id,
+            season_id: currentSeason.id,
+            points: points
+          })
+          .select()
+          .single()
+        
+        if (data) {
+          setUserRanking(data as Ranking)
+        }
+      }
+    } catch (error) {
+      console.error('Error updating ranking points:', error)
+    }
+  }, [user, currentSeason, userRanking, supabase])
+
   useEffect(() => {
     fetchUserData()
 
@@ -199,6 +233,7 @@ export function HachiProvider({ children }: { children: ReactNode }) {
       setActiveTab,
       refreshUser: fetchUserData,
       updateBalance,
+      updateRankingPoints,
       signOut,
       currentSeason,
       userRanking,

@@ -216,20 +216,35 @@ export const REFERRAL_REWARDS = {
   level_10: 500,
 }
 
-// Staking APY by lock duration
+// Staking APY configuration (ANNUAL)
 export const STAKING_CONFIG = {
   minLock: 1000, // Minimum HACHI to lock
-  seasonDuration: 30, // days
-  rewardMultiplier: 1.5, // 50% bonus for full season lock
+  seasonDuration: 365, // days (annual)
+  baseAPY: 0.50, // 50% base APY
+  maxAPY: 0.80, // 80% max APY with upgraded cats
+  apyBonusPerLevel: 0.015, // 1.5% bonus per cat level above 10
 }
 
-// Ranking points
+// Calculate APY based on cat level
+export function calculateAPY(catLevel: number): number {
+  if (catLevel <= 10) return STAKING_CONFIG.baseAPY
+  const bonusLevels = catLevel - 10
+  const totalAPY = STAKING_CONFIG.baseAPY + (bonusLevels * STAKING_CONFIG.apyBonusPerLevel)
+  return Math.min(totalAPY, STAKING_CONFIG.maxAPY)
+}
+
+// Ranking points - EVERYTHING adds points
 export const RANKING_POINTS = {
-  dailyClaim: 10,
-  missionComplete: 25,
-  adWatch: 5,
-  referral: 100,
-  catUpgrade: 50,
+  dailyClaim: 10, // Reclamar produccion diaria
+  feedCat: 5, // Alimentar gato
+  openChest: 50, // Abrir un cofre
+  depositToChest: 5, // Depositar HACHI a cofre
+  missionComplete: 25, // Completar mision
+  adWatch: 15, // Ver anuncio
+  referral: 100, // Traer amigo
+  catUpgrade: 75, // Mejorar gato
+  equipAccessory: 10, // Equipar accesorio
+  stakingDeposit: 20, // Hacer staking (por cada 1000 HACHI)
 }
 
 // Cat images mapping (20 unique cats)

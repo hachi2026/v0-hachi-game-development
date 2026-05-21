@@ -33,8 +33,12 @@ const borderClasses = {
 }
 
 export function CatAvatar({ level, rarity, size = 'lg', showGlow = true, className }: CatAvatarProps) {
-  // Calculate cat image index based on level (1-30)
-  const catIndex = Math.min(level, 30)
+  // Map levels 1-20 to cat images 11-30 (skip common cats, use rare+)
+  // Level 1-5 -> cats 11-15
+  // Level 6-10 -> cats 16-20
+  // Level 11-15 -> cats 21-25
+  // Level 16-20 -> cats 26-30
+  const catIndex = Math.min(level + 10, 30)
   
   return (
     <div 

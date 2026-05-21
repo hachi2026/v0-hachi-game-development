@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { HachiProvider } from '@/lib/hachi-context'
+import { MiniKitProvider } from '@/lib/minikit-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -47,9 +48,11 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body className="font-sans antialiased bg-background min-h-screen">
-        <HachiProvider>
-          {children}
-        </HachiProvider>
+        <MiniKitProvider>
+          <HachiProvider>
+            {children}
+          </HachiProvider>
+        </MiniKitProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

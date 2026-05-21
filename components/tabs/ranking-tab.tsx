@@ -13,9 +13,17 @@ import {
   Star,
   TrendingUp,
   Clock,
-  Gift
+  Gift,
+  Info,
+  Coins,
+  Cat,
+  Package,
+  Users,
+  Lock,
+  Eye,
+  CheckCircle
 } from 'lucide-react'
-import { formatNumber, getRarityColor } from '@/lib/game-config'
+import { formatNumber, getRarityColor, RANKING_POINTS } from '@/lib/game-config'
 import type { Ranking, Profile } from '@/lib/types'
 
 interface RankingWithProfile extends Ranking {
@@ -187,6 +195,81 @@ export function RankingTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* How to earn points */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="w-4 h-4 text-primary" />
+            Como ganar puntos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Coins className="w-4 h-4 text-amber-500" />
+              <span>Claim diario</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.dailyClaim}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Cat className="w-4 h-4 text-primary" />
+              <span>Alimentar gato</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.feedCat}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-purple-500" />
+              <span>Abrir cofre</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.openChest}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Coins className="w-4 h-4 text-blue-500" />
+              <span>Depositar en cofre</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.depositToChest}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-hachi-green" />
+              <span>Completar mision</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.missionComplete}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-cyan-500" />
+              <span>Ver anuncio</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.adWatch}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-orange-500" />
+              <span>Mejorar gato</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.catUpgrade}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-indigo-500" />
+              <span>Staking (por 1K HACHI)</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.stakingDeposit}</Badge>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-pink-500" />
+              <span>Referir amigo</span>
+            </div>
+            <Badge variant="secondary">+{RANKING_POINTS.referral}</Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Rewards Info */}
       <Card>
