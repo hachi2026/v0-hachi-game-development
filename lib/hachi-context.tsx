@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, Hachi, UserData, TabType } from '@/lib/types'
+import type { Profile, Hachi, UserData, TabType, UserAccessory, Season, Ranking } from '@/lib/types'
 import { getDailyProduction, FOOD_PACKS } from '@/lib/game-config'
 
 interface HachiContextType {
@@ -12,8 +12,10 @@ interface HachiContextType {
   activeTab: TabType
   setActiveTab: (tab: TabType) => void
   refreshUser: () => Promise<void>
-  updateBalance: (amount: number) => void
+  updateBalance: (amount: number, token?: 'hachi' | 'koban') => void
   signOut: () => Promise<void>
+  currentSeason: Season | null
+  userRanking: Ranking | null
 }
 
 const HachiContext = createContext<HachiContextType | undefined>(undefined)
@@ -23,6 +25,8 @@ export function HachiProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('home')
+  const [currentSeason, setCurrentSeason] = useState<Season | null>(null)
+  const [userRanking, setUserRanking] = useState<Ranking | null>(null)
   
   const supabase = createClient()
 
@@ -58,6 +62,48 @@ export function HachiProvider({ children }: { children: ReactNode }) {
 
       if (hachiError) throw hachiError
 
+      // Fetch user accessories with accessory details
+      const { data: userAccessories } = await supabase
+        .from('user_accessories')
+        .select(`
+          *,
+          accessory:accessories(*)
+        `)
+        .eq('user_id', authUser.id)
+
+      // Calculate accessory production (KOBAN from equipped accessories)
+      let accessoryProduction = 0
+      if (userAccessories) {
+        for (const ua of userAccessories) {
+          if (ua.hachi_id && ua.accessory) {
+            accessoryProduction += ua.accessory.daily_production
+          }
+        }
+      }
+
+      // Fetch current active season
+      const { data: season } = await supabase
+        .from('seasons')
+        .select('*')
+        .eq('is_active', true)
+        .single()
+
+      if (season) {
+        setCurrentSeason(season as Season)
+
+        // Fetch user ranking for current season
+        const { data: ranking } = await supabase
+          .from('rankings')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .eq('season_id', season.id)
+          .single()
+
+        if (ranking) {
+          setUserRanking(ranking as Ranking)
+        }
+      }
+
       // Calculate if user can claim
       const now = new Date()
       const lastClaim = hachi.last_claim_at ? new Date(hachi.last_claim_at) : null
@@ -81,15 +127,20 @@ export function HachiProvider({ children }: { children: ReactNode }) {
 
       const hasFoodBonus = foodPurchases && foodPurchases.length > 0
 
-      // Calculate daily production
+      // Calculate daily production (KOBAN from cat level)
       const dailyProduction = getDailyProduction(hachi.level, hasFoodBonus)
 
       setUser({
-        profile: profile as Profile,
+        profile: {
+          ...profile,
+          hachi_koban_balance: profile.hachi_koban_balance || 0,
+        } as Profile,
         hachi: hachi as Hachi,
         canClaim: canClaim && hasEnergy,
         dailyProduction,
         energyDaysRemaining,
+        accessories: (userAccessories || []) as UserAccessory[],
+        accessoryProduction,
       })
     } catch (err) {
       console.error('Error fetching user data:', err)
@@ -99,9 +150,18 @@ export function HachiProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase])
 
-  const updateBalance = useCallback((amount: number) => {
+  const updateBalance = useCallback((amount: number, token: 'hachi' | 'koban' = 'hachi') => {
     setUser(prev => {
       if (!prev) return prev
+      if (token === 'koban') {
+        return {
+          ...prev,
+          profile: {
+            ...prev.profile,
+            hachi_koban_balance: prev.profile.hachi_koban_balance + amount,
+          },
+        }
+      }
       return {
         ...prev,
         profile: {
@@ -140,6 +200,8 @@ export function HachiProvider({ children }: { children: ReactNode }) {
       refreshUser: fetchUserData,
       updateBalance,
       signOut,
+      currentSeason,
+      userRanking,
     }}>
       {children}
     </HachiContext.Provider>

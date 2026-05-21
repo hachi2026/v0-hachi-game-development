@@ -1,0 +1,284 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useHachi } from '@/lib/hachi-context'
+import { createClient } from '@/lib/supabase/client'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { 
+  Trophy, 
+  Medal, 
+  Crown,
+  Star,
+  TrendingUp,
+  Clock,
+  Gift
+} from 'lucide-react'
+import { formatNumber, getRarityColor } from '@/lib/game-config'
+import type { Ranking, Profile } from '@/lib/types'
+
+interface RankingWithProfile extends Ranking {
+  profile: Profile
+}
+
+export function RankingTab() {
+  const { user, currentSeason, userRanking } = useHachi()
+  const [rankings, setRankings] = useState<RankingWithProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userPosition, setUserPosition] = useState<number | null>(null)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    fetchRankings()
+  }, [currentSeason])
+
+  const fetchRankings = async () => {
+    if (!currentSeason) return
+    
+    try {
+      setLoading(true)
+      
+      const { data } = await supabase
+        .from('rankings')
+        .select(`
+          *,
+          profile:profiles(*)
+        `)
+        .eq('season_id', currentSeason.id)
+        .order('points', { ascending: false })
+        .limit(100)
+      
+      if (data) {
+        setRankings(data as RankingWithProfile[])
+        
+        // Find user position
+        if (user) {
+          const position = data.findIndex(r => r.user_id === user.profile.id)
+          setUserPosition(position >= 0 ? position + 1 : null)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching rankings:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getRankIcon = (position: number) => {
+    switch (position) {
+      case 1: return <Crown className="w-5 h-5 text-amber-400" />
+      case 2: return <Medal className="w-5 h-5 text-gray-400" />
+      case 3: return <Medal className="w-5 h-5 text-amber-600" />
+      default: return <span className="text-sm font-bold text-muted-foreground">#{position}</span>
+    }
+  }
+
+  const getRewardTier = (position: number) => {
+    if (position === 1) return { reward: '50,000 KOBAN', accessory: 'Exclusivo', color: 'text-amber-400' }
+    if (position <= 5) return { reward: '25,000 KOBAN', accessory: 'Premium', color: 'text-purple-400' }
+    if (position <= 20) return { reward: '10,000 KOBAN', accessory: 'Avanzado', color: 'text-blue-400' }
+    if (position <= 100) return { reward: '2,500 KOBAN', accessory: null, color: 'text-gray-400' }
+    return null
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
+
+  const seasonEndsIn = currentSeason 
+    ? Math.max(0, Math.ceil((new Date(currentSeason.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
+
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Season Info */}
+      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold">{currentSeason?.name || 'Temporada Actual'}</h2>
+              <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">{seasonEndsIn} dias restantes</span>
+              </div>
+            </div>
+            <Trophy className="w-10 h-10 text-primary/30" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-background/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Pool de Premios</p>
+              <p className="text-lg font-bold text-primary">
+                {formatNumber(currentSeason?.total_reward_pool || 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">KOBAN</p>
+            </div>
+            <div className="bg-background/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Participantes</p>
+              <p className="text-lg font-bold">{rankings.length}</p>
+              <p className="text-xs text-muted-foreground">jugadores</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* User Stats */}
+      {userRanking && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Star className="w-4 h-4 text-primary" />
+              Tu Posicion
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  {userPosition ? getRankIcon(userPosition) : <TrendingUp className="w-5 h-5" />}
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    {userPosition ? `#${userPosition}` : 'Sin clasificar'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatNumber(userRanking.points)} puntos
+                  </p>
+                </div>
+              </div>
+              {userPosition && getRewardTier(userPosition) && (
+                <div className="text-right">
+                  <Badge variant="outline" className={getRewardTier(userPosition)?.color}>
+                    {getRewardTier(userPosition)?.reward}
+                  </Badge>
+                  {getRewardTier(userPosition)?.accessory && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      + Accesorio {getRewardTier(userPosition)?.accessory}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-lg font-bold">{userRanking.claims_count}</p>
+                <p className="text-xs text-muted-foreground">Claims</p>
+              </div>
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-lg font-bold">{userRanking.missions_completed}</p>
+                <p className="text-xs text-muted-foreground">Misiones</p>
+              </div>
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-lg font-bold">{userRanking.ads_watched}</p>
+                <p className="text-xs text-muted-foreground">Anuncios</p>
+              </div>
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-lg font-bold">{userRanking.referrals_count}</p>
+                <p className="text-xs text-muted-foreground">Referidos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Rewards Info */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Gift className="w-4 h-4 text-amber-500" />
+            Premios por Temporada
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-400" />
+              <span className="text-sm">Top 1</span>
+            </div>
+            <span className="text-sm font-medium text-amber-400">50,000 KOBAN + Exclusivo</span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <Medal className="w-4 h-4 text-purple-400" />
+              <span className="text-sm">Top 2-5</span>
+            </div>
+            <span className="text-sm font-medium text-purple-400">25,000 KOBAN + Premium</span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <Medal className="w-4 h-4 text-blue-400" />
+              <span className="text-sm">Top 6-20</span>
+            </div>
+            <span className="text-sm font-medium text-blue-400">10,000 KOBAN + Avanzado</span>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-gray-400" />
+              <span className="text-sm">Top 21-100</span>
+            </div>
+            <span className="text-sm font-medium text-gray-400">2,500 KOBAN</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Leaderboard */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" />
+            Clasificacion
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {rankings.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              No hay participantes aun
+            </p>
+          ) : (
+            rankings.slice(0, 20).map((ranking, index) => {
+              const position = index + 1
+              const isCurrentUser = user && ranking.user_id === user.profile.id
+              
+              return (
+                <div 
+                  key={ranking.id}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    isCurrentUser ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      {getRankIcon(position)}
+                    </div>
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="text-xs">
+                        {ranking.profile?.username?.charAt(0).toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className={`text-sm font-medium ${isCurrentUser ? 'text-primary' : ''}`}>
+                        {ranking.profile?.username || 'Usuario'}
+                        {isCurrentUser && ' (Tu)'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">{formatNumber(ranking.points)}</p>
+                    <p className="text-xs text-muted-foreground">puntos</p>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -9,6 +9,9 @@ import { HachiTab } from '@/components/tabs/hachi-tab'
 import { TiendaTab } from '@/components/tabs/tienda-tab'
 import { MisionesTab } from '@/components/tabs/misiones-tab'
 import { PerfilTab } from '@/components/tabs/perfil-tab'
+import { AccesoriosTab } from '@/components/tabs/accesorios-tab'
+import { RankingTab } from '@/components/tabs/ranking-tab'
+import { StakingTab } from '@/components/tabs/staking-tab'
 import { Spinner } from '@/components/ui/spinner'
 
 export default function HomePage() {
@@ -19,7 +22,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4">
-          <span className="text-2xl">🐱</span>
+          <span className="text-2xl">H</span>
         </div>
         <Spinner className="w-8 h-8 text-primary" />
         <p className="text-sm text-muted-foreground mt-4">Cargando Hachi Hub...</p>
@@ -60,6 +63,9 @@ export default function HomePage() {
         {activeTab === 'tienda' && <TiendaTab />}
         {activeTab === 'misiones' && <MisionesTab />}
         {activeTab === 'perfil' && <PerfilTab />}
+        {activeTab === 'accesorios' && <AccesoriosTab />}
+        {activeTab === 'ranking' && <RankingTab />}
+        {activeTab === 'staking' && <StakingTab />}
       </main>
 
       <BottomNav />

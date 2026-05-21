@@ -6,6 +6,7 @@ export interface Profile {
   referral_code: string
   referred_by: string | null
   hachi_balance: number
+  hachi_koban_balance: number
   wld_spent: number
   total_referrals: number
   created_at: string
@@ -26,6 +27,102 @@ export interface Hachi {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface Accessory {
+  id: string
+  name: string
+  type: 'gafas' | 'gorro' | 'pantalon' | 'peine' | 'arenero' | 'casa'
+  tier: 'basico' | 'avanzado' | 'premium' | 'exclusivo'
+  daily_production: number
+  image_url: string | null
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  created_at: string
+}
+
+export interface UserAccessory {
+  id: string
+  user_id: string
+  accessory_id: string
+  hachi_id: string | null
+  acquired_at: string
+  accessory?: Accessory
+}
+
+export interface Chest {
+  id: string
+  name: string
+  tier: 'basico' | 'avanzado' | 'premium' | 'exclusivo'
+  hachi_cost: number
+  image_url: string | null
+  created_at: string
+}
+
+export interface ChestDeposit {
+  id: string
+  user_id: string
+  chest_id: string
+  hachi_deposited: number
+  completed: boolean
+  accessory_won: string | null
+  created_at: string
+  completed_at: string | null
+  chest?: Chest
+  accessory?: Accessory
+}
+
+export interface Season {
+  id: string
+  name: string
+  starts_at: string
+  ends_at: string
+  total_reward_pool: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface Staking {
+  id: string
+  user_id: string
+  season_id: string
+  hachi_locked: number
+  locked_at: string
+  unlocked_at: string | null
+  reward_claimed: number
+  is_active: boolean
+}
+
+export interface Ranking {
+  id: string
+  user_id: string
+  season_id: string
+  points: number
+  claims_count: number
+  missions_completed: number
+  ads_watched: number
+  referrals_count: number
+  last_activity: string
+  profile?: Profile
+}
+
+export interface Advertisement {
+  id: string
+  advertiser_name: string
+  image_url: string
+  link_url: string
+  wld_paid: number
+  hachi_reward: number
+  views_remaining: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface AdView {
+  id: string
+  user_id: string
+  ad_id: string
+  hachi_earned: number
+  viewed_at: string
 }
 
 export interface FoodPurchase {
@@ -76,6 +173,8 @@ export interface UserData {
   canClaim: boolean
   dailyProduction: number
   energyDaysRemaining: number
+  accessories: UserAccessory[]
+  accessoryProduction: number
 }
 
-export type TabType = 'home' | 'hachi' | 'tienda' | 'misiones' | 'perfil'
+export type TabType = 'home' | 'hachi' | 'tienda' | 'misiones' | 'perfil' | 'ranking' | 'staking' | 'accesorios'

@@ -13,7 +13,9 @@ import {
   getUpgradeCost, 
   getRarityColor,
   getRarityBgColor,
-  LEVEL_CONFIGS
+  LEVEL_CONFIGS,
+  MAX_LEVEL,
+  RANKING_POINTS
 } from '@/lib/game-config'
 import { 
   Coins, 
@@ -23,7 +25,8 @@ import {
   ArrowRight, 
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  CircleDollarSign
 } from 'lucide-react'
 
 export function HachiTab() {
@@ -36,10 +39,11 @@ export function HachiTab() {
 
   if (!user) return null
 
-  const { profile, hachi, dailyProduction, energyDaysRemaining, canClaim } = user
+  const { profile, hachi, dailyProduction, energyDaysRemaining, canClaim, accessoryProduction } = user
   const levelConfig = getLevelConfig(hachi.level)
-  const nextLevelConfig = hachi.level < 30 ? getLevelConfig(hachi.level + 1) : null
+  const nextLevelConfig = hachi.level < MAX_LEVEL ? getLevelConfig(hachi.level + 1) : null
   const upgradeCost = getUpgradeCost(hachi.level)
+  const totalKobanProduction = dailyProduction + (accessoryProduction || 0)
 
   const handleClaim = async () => {
     if (!canClaim) return
@@ -64,23 +68,23 @@ export function HachiTab() {
         .from('hachis')
         .update({
           last_claim_at: new Date().toISOString(),
-          total_production: hachi.total_production + dailyProduction,
+          total_production: hachi.total_production + totalKobanProduction,
         })
         .eq('id', hachi.id)
 
       if (hachiError) throw hachiError
 
-      // Update profile balance
+      // Update profile KOBAN balance
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          hachi_balance: profile.hachi_balance + dailyProduction,
+          hachi_koban_balance: (profile.hachi_koban_balance || 0) + totalKobanProduction,
         })
         .eq('id', profile.id)
 
       if (profileError) throw profileError
 
-      updateBalance(dailyProduction)
+      updateBalance(totalKobanProduction, 'koban')
       await refreshUser()
     } catch (error) {
       console.error('Error claiming:', error)
@@ -90,7 +94,7 @@ export function HachiTab() {
   }
 
   const handleUpgrade = async () => {
-    if (hachi.level >= 30) return
+    if (hachi.level >= MAX_LEVEL) return
     setUpgrading(true)
 
     try {
@@ -169,10 +173,10 @@ export function HachiTab() {
               {/* Production */}
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Coins className="w-5 h-5 text-primary" />
-                  <span className="text-sm">Producción diaria</span>
+                  <CircleDollarSign className="w-5 h-5 text-amber-500" />
+                  <span className="text-sm">Produccion diaria</span>
                 </div>
-                <span className="font-bold text-primary">{formatNumber(dailyProduction)} HACHI</span>
+                <span className="font-bold text-amber-500">{formatNumber(totalKobanProduction)} KOBAN</span>
               </div>
 
               {/* Level Bonus */}
@@ -181,7 +185,7 @@ export function HachiTab() {
                   <TrendingUp className="w-5 h-5 text-accent" />
                   <span className="text-sm">Bonus por nivel</span>
                 </div>
-                <span className="font-bold text-accent">+{levelConfig.totalDailyProduction - 110}</span>
+                <span className="font-bold text-accent">+{levelConfig.totalDailyProduction - 100}</span>
               </div>
 
               {/* Energy Status */}
@@ -197,22 +201,22 @@ export function HachiTab() {
             </div>
 
             {/* Claim Section */}
-            <div className="w-full mt-6 p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
+            <div className="w-full mt-6 p-4 bg-gradient-to-r from-amber-500/10 to-amber-600/10 rounded-xl border border-amber-500/20">
               <div className="text-center mb-4">
-                <p className="text-sm text-muted-foreground">Tu producción diaria</p>
-                <p className="text-3xl font-bold text-primary">{formatNumber(dailyProduction)} <span className="text-lg">HACHI</span></p>
+                <p className="text-sm text-muted-foreground">Tu produccion diaria</p>
+                <p className="text-3xl font-bold text-amber-500">{formatNumber(totalKobanProduction)} <span className="text-lg">KOBAN</span></p>
               </div>
 
               {energyDaysRemaining === 0 ? (
                 <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg mb-4">
                   <AlertCircle className="w-5 h-5 text-destructive" />
                   <p className="text-sm text-destructive">
-                    Sin energía, no producirá HACHI
+                    Sin energia, no producira KOBAN
                   </p>
                 </div>
               ) : canClaim ? (
                 <Button 
-                  className="w-full h-14 text-lg font-bold bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                  className="w-full h-14 text-lg font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:opacity-90 text-white"
                   onClick={handleClaim}
                   disabled={claiming}
                 >
@@ -223,7 +227,7 @@ export function HachiTab() {
                     </span>
                   ) : (
                     <>
-                      <Gift className="w-5 h-5 mr-2" />
+                      <CircleDollarSign className="w-5 h-5 mr-2" />
                       CLAIM DIARIO
                     </>
                   )}
@@ -240,7 +244,7 @@ export function HachiTab() {
       </Card>
 
       {/* Upgrade Section */}
-      {hachi.level < 30 && nextLevelConfig && (
+      {hachi.level < MAX_LEVEL && nextLevelConfig && (
         <Card className="border-border/50 bg-card/80">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -263,14 +267,14 @@ export function HachiTab() {
 
             <div className="space-y-2 mb-4 p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Producción diaria</span>
+                <span className="text-muted-foreground">Produccion diaria</span>
                 <span>
                   {formatNumber(dailyProduction)} <ArrowRight className="inline w-3 h-3" /> <span className="text-hachi-green font-bold">{formatNumber(nextLevelConfig.totalDailyProduction)}</span>
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Bonus adicional</span>
-                <span className="text-hachi-green font-bold">+{nextLevelConfig.dailyBonus} HACHI/día</span>
+                <span className="text-hachi-green font-bold">+{nextLevelConfig.dailyBonus} KOBAN/dia</span>
               </div>
             </div>
 
@@ -299,7 +303,7 @@ export function HachiTab() {
                   Nivel {hachi.level} <ArrowRight className="inline w-4 h-4" /> Nivel {hachi.level + 1}
                 </p>
                 <p className="text-2xl font-bold text-accent">
-                  +{nextLevelConfig.dailyBonus} HACHI/día
+                  +{nextLevelConfig.dailyBonus} KOBAN/dia
                 </p>
               </div>
 
