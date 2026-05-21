@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title HachiKoban Token
@@ -52,6 +52,7 @@ contract HachiKoban is ERC20, ERC20Burnable, ERC20Permit, AccessControl, Pausabl
     event TeamTokensClaimed(address indexed teamWallet, uint256 amount);
     event EmergencyMint(address indexed to, uint256 amount, string reason);
     event WalletUpdated(string walletType, address oldWallet, address newWallet);
+    event RewardDistributed(address indexed to, uint256 amount);
     
     constructor(
         address _appRewardsWallet,
@@ -147,7 +148,7 @@ contract HachiKoban is ERC20, ERC20Burnable, ERC20Permit, AccessControl, Pausabl
     }
     
     /**
-     * @notice Permite al Game Controller transferir tokens de recompensas
+     * @notice Permite al Game Controller distribuir recompensas KOBAN
      */
     function distributeReward(
         address to, 
@@ -157,6 +158,7 @@ contract HachiKoban is ERC20, ERC20Burnable, ERC20Permit, AccessControl, Pausabl
         require(balanceOf(appRewardsWallet) >= amount, "Insufficient rewards pool");
         
         _transfer(appRewardsWallet, to, amount);
+        emit RewardDistributed(to, amount);
     }
     
     // === Admin Functions ===
@@ -181,13 +183,13 @@ contract HachiKoban is ERC20, ERC20Burnable, ERC20Permit, AccessControl, Pausabl
         appRewardsWallet = newWallet;
     }
     
-    // === Overrides ===
+    // === Overrides para Pausable ===
     
-    function _beforeTokenTransfer(
+    function _update(
         address from,
         address to,
-        uint256 amount
+        uint256 value
     ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, to, amount);
+        super._update(from, to, value);
     }
 }
