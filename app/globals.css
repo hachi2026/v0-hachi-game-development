@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Hachi Hub Dark Theme - Purple/Orange Accent */
+  --background: oklch(0.13 0.02 280);
+  --foreground: oklch(0.95 0.01 280);
+  --card: oklch(0.18 0.025 280);
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.16 0.02 280);
+  --popover-foreground: oklch(0.95 0.01 280);
+  --primary: oklch(0.75 0.18 50);
+  --primary-foreground: oklch(0.15 0.02 50);
+  --secondary: oklch(0.25 0.04 280);
+  --secondary-foreground: oklch(0.95 0.01 280);
+  --muted: oklch(0.22 0.03 280);
+  --muted-foreground: oklch(0.65 0.02 280);
+  --accent: oklch(0.65 0.25 300);
+  --accent-foreground: oklch(0.98 0.01 300);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(0.28 0.04 280);
+  --input: oklch(0.22 0.03 280);
+  --ring: oklch(0.75 0.18 50);
+  --chart-1: oklch(0.75 0.18 50);
+  --chart-2: oklch(0.65 0.25 300);
+  --chart-3: oklch(0.70 0.15 150);
+  --chart-4: oklch(0.80 0.15 80);
+  --chart-5: oklch(0.60 0.20 220);
+  --radius: 0.75rem;
+  
+  /* Custom Hachi colors */
+  --hachi-gold: oklch(0.80 0.16 85);
+  --hachi-purple: oklch(0.55 0.25 300);
+  --hachi-orange: oklch(0.75 0.18 50);
+  --hachi-green: oklch(0.70 0.18 145);
+  --hachi-blue: oklch(0.65 0.15 240);
+  
+  /* Rarity colors */
+  --rarity-common: oklch(0.60 0.02 280);
+  --rarity-rare: oklch(0.65 0.15 240);
+  --rarity-epic: oklch(0.60 0.25 300);
+  --rarity-legendary: oklch(0.80 0.16 85);
+}
+
+.dark {
+  --background: oklch(0.13 0.02 280);
+  --foreground: oklch(0.95 0.01 280);
+  --card: oklch(0.18 0.025 280);
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.16 0.02 280);
+  --popover-foreground: oklch(0.95 0.01 280);
+  --primary: oklch(0.75 0.18 50);
+  --primary-foreground: oklch(0.15 0.02 50);
+  --secondary: oklch(0.25 0.04 280);
+  --secondary-foreground: oklch(0.95 0.01 280);
+  --muted: oklch(0.22 0.03 280);
+  --muted-foreground: oklch(0.65 0.02 280);
+  --accent: oklch(0.65 0.25 300);
+  --accent-foreground: oklch(0.98 0.01 300);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(0.28 0.04 280);
+  --input: oklch(0.22 0.03 280);
+  --ring: oklch(0.75 0.18 50);
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Hachi custom colors */
+  --color-hachi-gold: var(--hachi-gold);
+  --color-hachi-purple: var(--hachi-purple);
+  --color-hachi-orange: var(--hachi-orange);
+  --color-hachi-green: var(--hachi-green);
+  --color-hachi-blue: var(--hachi-blue);
+  --color-rarity-common: var(--rarity-common);
+  --color-rarity-rare: var(--rarity-rare);
+  --color-rarity-epic: var(--rarity-epic);
+  --color-rarity-legendary: var(--rarity-legendary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(0.18 0.02 280);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.04 280);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.04 280);
+}
+
+/* Glow effects for cards */
+.glow-orange {
+  box-shadow: 0 0 20px oklch(0.75 0.18 50 / 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px oklch(0.65 0.25 300 / 0.3);
+}
+
+.glow-gold {
+  box-shadow: 0 0 25px oklch(0.80 0.16 85 / 0.4);
+}
+
+/* Rarity badge styles */
+.badge-common {
+  @apply bg-gray-500/20 text-gray-300 border-gray-500/30;
+}
+
+.badge-rare {
+  @apply bg-blue-500/20 text-blue-300 border-blue-500/30;
+}
+
+.badge-epic {
+  @apply bg-purple-500/20 text-purple-300 border-purple-500/30;
+}
+
+.badge-legendary {
+  @apply bg-amber-500/20 text-amber-300 border-amber-500/30;
+}
+
+/* Energy bar animation */
+@keyframes pulse-energy {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-energy {
+  animation: pulse-energy 2s ease-in-out infinite;
+}
+
+/* Coin animation */
+@keyframes float-coin {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-coin {
+  animation: float-coin 3s ease-in-out infinite;
+}

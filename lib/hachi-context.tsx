@@ -1,0 +1,155 @@
+'use client'
+
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import type { Profile, Hachi, UserData, TabType } from '@/lib/types'
+import { getDailyProduction, FOOD_PACKS } from '@/lib/game-config'
+
+interface HachiContextType {
+  user: UserData | null
+  loading: boolean
+  error: string | null
+  activeTab: TabType
+  setActiveTab: (tab: TabType) => void
+  refreshUser: () => Promise<void>
+  updateBalance: (amount: number) => void
+  signOut: () => Promise<void>
+}
+
+const HachiContext = createContext<HachiContextType | undefined>(undefined)
+
+export function HachiProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<UserData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('home')
+  
+  const supabase = createClient()
+
+  const fetchUserData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      if (!authUser) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
+      // Fetch profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+
+      if (profileError) throw profileError
+
+      // Fetch hachi
+      const { data: hachi, error: hachiError } = await supabase
+        .from('hachis')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .eq('is_active', true)
+        .single()
+
+      if (hachiError) throw hachiError
+
+      // Calculate if user can claim
+      const now = new Date()
+      const lastClaim = hachi.last_claim_at ? new Date(hachi.last_claim_at) : null
+      const canClaim = !lastClaim || (now.getTime() - lastClaim.getTime()) >= 24 * 60 * 60 * 1000
+
+      // Check energy
+      const energyExpires = hachi.energy_expires_at ? new Date(hachi.energy_expires_at) : null
+      const hasEnergy = energyExpires && energyExpires > now
+      const energyDaysRemaining = hasEnergy 
+        ? Math.ceil((energyExpires.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+        : 0
+
+      // Check if user has 90-day food bonus
+      const { data: foodPurchases } = await supabase
+        .from('food_purchases')
+        .select('*')
+        .eq('hachi_id', hachi.id)
+        .eq('days_purchased', 90)
+        .gt('expires_at', now.toISOString())
+        .limit(1)
+
+      const hasFoodBonus = foodPurchases && foodPurchases.length > 0
+
+      // Calculate daily production
+      const dailyProduction = getDailyProduction(hachi.level, hasFoodBonus)
+
+      setUser({
+        profile: profile as Profile,
+        hachi: hachi as Hachi,
+        canClaim: canClaim && hasEnergy,
+        dailyProduction,
+        energyDaysRemaining,
+      })
+    } catch (err) {
+      console.error('Error fetching user data:', err)
+      setError(err instanceof Error ? err.message : 'Error al cargar datos')
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
+  const updateBalance = useCallback((amount: number) => {
+    setUser(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        profile: {
+          ...prev.profile,
+          hachi_balance: prev.profile.hachi_balance + amount,
+        },
+      }
+    })
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setActiveTab('home')
+  }, [supabase])
+
+  useEffect(() => {
+    fetchUserData()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        fetchUserData()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [fetchUserData, supabase.auth])
+
+  return (
+    <HachiContext.Provider value={{
+      user,
+      loading,
+      error,
+      activeTab,
+      setActiveTab,
+      refreshUser: fetchUserData,
+      updateBalance,
+      signOut,
+    }}>
+      {children}
+    </HachiContext.Provider>
+  )
+}
+
+export function useHachi() {
+  const context = useContext(HachiContext)
+  if (context === undefined) {
+    throw new Error('useHachi must be used within a HachiProvider')
+  }
+  return context
+}
