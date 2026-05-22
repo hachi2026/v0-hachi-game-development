@@ -17,7 +17,10 @@ import {
   Gift,
   Wallet,
   Cat,
-  Info
+  Info,
+  Crown,
+  CircleDollarSign,
+  Sparkles
 } from 'lucide-react'
 import { formatNumber, STAKING_CONFIG, calculateAPY, RANKING_POINTS } from '@/lib/game-config'
 import type { Staking } from '@/lib/types'
@@ -32,9 +35,12 @@ export function StakingTab() {
 
   const supabase = createClient()
 
-  // Calculate user's APY based on cat level
+  // Calculate user's APY based on cat level and membership
   const catLevel = user?.hachi?.level || 1
-  const userAPY = calculateAPY(catLevel)
+  const hasMembership = user?.profile?.has_membership || false
+  const baseAPY = calculateAPY(catLevel)
+  const membershipBonus = hasMembership ? STAKING_CONFIG.membershipAPYBonus : 0
+  const userAPY = Math.min(baseAPY + membershipBonus, STAKING_CONFIG.maxAPYWithMembership)
   const apyPercent = (userAPY * 100).toFixed(1)
 
   useEffect(() => {
@@ -66,12 +72,12 @@ export function StakingTab() {
     
     const amount = parseInt(stakeAmount)
     if (isNaN(amount) || amount < STAKING_CONFIG.minLock) {
-      alert(`Minimo ${formatNumber(STAKING_CONFIG.minLock)} HACHI para hacer stake`)
+      alert(`Minimo ${formatNumber(STAKING_CONFIG.minLock)} KOBAN para hacer stake`)
       return
     }
     
-    if (amount > user.profile.hachi_balance) {
-      alert('No tienes suficiente HACHI')
+    if (amount > (user.profile.hachi_koban_balance || 0)) {
+      alert('No tienes suficiente KOBAN')
       return
     }
 
@@ -81,17 +87,17 @@ export function StakingTab() {
       await supabase.from('staking').insert({
         user_id: user.profile.id,
         season_id: currentSeason.id,
-        hachi_locked: amount
+        koban_locked: amount
       })
       
       await supabase
         .from('profiles')
-        .update({ hachi_balance: user.profile.hachi_balance - amount })
+        .update({ hachi_koban_balance: (user.profile.hachi_koban_balance || 0) - amount })
         .eq('id', user.profile.id)
       
-      updateBalance(-amount)
+      updateBalance(-amount, 'koban')
       
-      // Add ranking points for staking (per 1000 HACHI)
+      // Add ranking points for staking (per 1000 KOBAN)
       const stakingPoints = Math.floor(amount / 1000) * RANKING_POINTS.stakingDeposit
       updateRankingPoints(stakingPoints)
       
@@ -108,14 +114,13 @@ export function StakingTab() {
   const handleUnstake = async (stake: Staking) => {
     if (!user || unstaking) return
     
-    // For annual staking, calculate based on time locked
     const lockedAt = new Date(stake.locked_at)
     const now = new Date()
     const daysLocked = Math.floor((now.getTime() - lockedAt.getTime()) / (1000 * 60 * 60 * 24))
     
-    // Calculate proportional reward based on days locked (annual APY)
-    const proportionalAPY = (daysLocked / 365) * userAPY
-    const reward = Math.floor(stake.hachi_locked * (1 + proportionalAPY))
+    // Calculate proportional reward based on days locked (annual APY, season 90 days)
+    const proportionalAPY = (daysLocked / STAKING_CONFIG.seasonDuration) * userAPY
+    const reward = Math.floor(stake.koban_locked * (1 + proportionalAPY))
 
     setUnstaking(stake.id)
     
@@ -125,16 +130,16 @@ export function StakingTab() {
         .update({
           is_active: false,
           unlocked_at: new Date().toISOString(),
-          reward_claimed: reward - stake.hachi_locked
+          reward_claimed: reward - stake.koban_locked
         })
         .eq('id', stake.id)
       
       await supabase
         .from('profiles')
-        .update({ hachi_balance: user.profile.hachi_balance + reward })
+        .update({ hachi_koban_balance: (user.profile.hachi_koban_balance || 0) + reward })
         .eq('id', user.profile.id)
       
-      updateBalance(reward)
+      updateBalance(reward, 'koban')
       fetchStakes()
       refreshUser()
     } catch (error) {
@@ -153,98 +158,147 @@ export function StakingTab() {
   }
 
   const activeStakes = stakes.filter(s => s.is_active)
-  const totalLocked = activeStakes.reduce((sum, s) => sum + s.hachi_locked, 0)
+  const totalLocked = activeStakes.reduce((sum, s) => sum + (s.koban_locked || 0), 0)
   
-  // Calculate estimated annual reward
-  const estimatedAnnualReward = Math.floor(totalLocked * userAPY)
+  // Calculate estimated season reward (90 days)
+  const estimatedSeasonReward = Math.floor(totalLocked * userAPY)
 
   return (
     <div className="space-y-6 pb-24">
       {/* APY Info Card */}
-      <Card className="bg-gradient-to-br from-hachi-green/20 to-hachi-green/5 border-hachi-green/30">
+      <Card className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 border-amber-500/30">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold">Tu APY Actual</h2>
-              <p className="text-3xl font-bold text-hachi-green">{apyPercent}%</p>
-              <p className="text-sm text-muted-foreground">Anual</p>
+              <p className="text-3xl font-bold text-amber-500">{apyPercent}%</p>
+              <p className="text-sm text-muted-foreground">Por temporada (90 dias)</p>
             </div>
-            <div className="text-right">
+            <div className="text-right space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Cat className="w-5 h-5" />
                 <span>Nivel {catLevel}</span>
               </div>
+              {hasMembership && (
+                <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">
+                  <Crown className="w-3 h-3 mr-1" />
+                  MEMBER
+                </Badge>
+              )}
             </div>
           </div>
 
           {/* APY explanation */}
-          <div className="p-3 bg-background/50 rounded-lg text-sm space-y-1">
+          <div className="p-3 bg-background/50 rounded-lg text-sm space-y-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Info className="w-4 h-4" />
               <span>Como funciona el APY:</span>
             </div>
             <ul className="text-xs text-muted-foreground space-y-1 ml-6">
-              <li>Base: {(STAKING_CONFIG.baseAPY * 100)}% APY anual</li>
-              <li>Gato nivel 11+: +1.5% por cada nivel</li>
-              <li>Maximo: {(STAKING_CONFIG.maxAPY * 100)}% APY anual</li>
+              <li>Base: {(STAKING_CONFIG.baseAPY * 100)}% por temporada</li>
+              <li>Gato nivel 11+: +2% por cada nivel</li>
+              <li>Sin membresia: max {(STAKING_CONFIG.maxAPY * 100)}%</li>
+              <li className="text-amber-500 font-medium">Con membresia: +20% bonus, max {(STAKING_CONFIG.maxAPYWithMembership * 100)}%</li>
             </ul>
           </div>
         </CardContent>
       </Card>
 
+      {/* Membership Banner */}
+      {!hasMembership && (
+        <Card className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-500/20 rounded-xl">
+                <Crown className="w-8 h-8 text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold">Hazte Miembro</h3>
+                <p className="text-sm text-muted-foreground">
+                  +20% APY extra (hasta 100%), 10% descuento mejoras
+                </p>
+                <p className="text-xs text-purple-400 mt-1">
+                  10 WLD - Recupera 60% en HACHI en 90 dias
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Staking Overview */}
-      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+      <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold">Staking HACHI</h2>
+              <h2 className="text-xl font-bold">Staking KOBAN</h2>
               <p className="text-sm text-muted-foreground">
-                Bloquea tus HACHI y gana recompensas anuales
+                Bloquea KOBAN y gana recompensas por temporada (90 dias)
               </p>
             </div>
-            <Lock className="w-10 h-10 text-primary/30" />
+            <Lock className="w-10 h-10 text-amber-500/30" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-background/50 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Total Bloqueado</p>
-              <p className="text-lg font-bold text-primary">
+              <p className="text-lg font-bold text-amber-500">
                 {formatNumber(totalLocked)}
               </p>
-              <p className="text-xs text-muted-foreground">HACHI</p>
+              <p className="text-xs text-muted-foreground">KOBAN</p>
             </div>
             <div className="bg-background/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Ganancia Anual Est.</p>
+              <p className="text-xs text-muted-foreground">Ganancia Temporada</p>
               <p className="text-lg font-bold text-hachi-green">
-                +{formatNumber(estimatedAnnualReward)}
+                +{formatNumber(estimatedSeasonReward)}
               </p>
-              <p className="text-xs text-muted-foreground">HACHI</p>
+              <p className="text-xs text-muted-foreground">KOBAN</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Season Info */}
+      {currentSeason && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium">{currentSeason.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Termina: {new Date(currentSeason.ends_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline">90 dias</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stake Form */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-primary" />
+            <Wallet className="w-4 h-4 text-amber-500" />
             Hacer Stake
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <span className="text-sm">Tu Balance</span>
+            <span className="text-sm">Tu Balance KOBAN</span>
             <div className="flex items-center gap-1">
-              <Coins className="w-4 h-4 text-primary" />
-              <span className="font-bold">{formatNumber(user?.profile.hachi_balance || 0)}</span>
+              <CircleDollarSign className="w-4 h-4 text-amber-500" />
+              <span className="font-bold">{formatNumber(user?.profile.hachi_koban_balance || 0)}</span>
             </div>
           </div>
 
           <div className="space-y-2">
             <Input
               type="number"
-              placeholder={`Min. ${formatNumber(STAKING_CONFIG.minLock)} HACHI`}
+              placeholder={`Min. ${formatNumber(STAKING_CONFIG.minLock)} KOBAN`}
               value={stakeAmount}
               onChange={(e) => setStakeAmount(e.target.value)}
             />
@@ -255,7 +309,7 @@ export function StakingTab() {
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => setStakeAmount(String(Math.floor((user?.profile.hachi_balance || 0) * (percent / 100))))}
+                  onClick={() => setStakeAmount(String(Math.floor((user?.profile.hachi_koban_balance || 0) * (percent / 100))))}
                 >
                   {percent}%
                 </Button>
@@ -265,35 +319,35 @@ export function StakingTab() {
 
           {/* Preview reward */}
           {stakeAmount && parseInt(stakeAmount) >= STAKING_CONFIG.minLock && (
-            <div className="p-3 bg-hachi-green/10 rounded-lg border border-hachi-green/20">
+            <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <Gift className="w-4 h-4 text-hachi-green" />
-                <span className="text-sm font-medium text-hachi-green">Ganancia Estimada</span>
+                <Gift className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-medium text-amber-500">Ganancia Estimada (90 dias)</span>
               </div>
-              <p className="text-lg font-bold text-hachi-green">
-                +{formatNumber(Math.floor(parseInt(stakeAmount) * userAPY))} HACHI/año
+              <p className="text-lg font-bold text-amber-500">
+                +{formatNumber(Math.floor(parseInt(stakeAmount) * userAPY))} KOBAN
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Con tu APY de {apyPercent}% (Nivel {catLevel})
+                Con tu APY de {apyPercent}% {hasMembership ? '(incluye bonus member)' : ''}
               </p>
             </div>
           )}
 
           <Button 
-            className="w-full" 
+            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:opacity-90" 
             disabled={staking || !stakeAmount || parseInt(stakeAmount) < STAKING_CONFIG.minLock}
             onClick={handleStake}
           >
             {staking ? 'Procesando...' : (
               <>
                 <Lock className="w-4 h-4 mr-2" />
-                Bloquear HACHI
+                Bloquear KOBAN
               </>
             )}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            +{RANKING_POINTS.stakingDeposit} puntos de ranking por cada 1,000 HACHI
+            +{RANKING_POINTS.stakingDeposit} puntos de ranking por cada 1,000 KOBAN
           </p>
         </CardContent>
       </Card>
@@ -312,9 +366,10 @@ export function StakingTab() {
               const lockedAt = new Date(stake.locked_at)
               const now = new Date()
               const daysLocked = Math.floor((now.getTime() - lockedAt.getTime()) / (1000 * 60 * 60 * 24))
-              const proportionalAPY = (daysLocked / 365) * userAPY
-              const currentReward = Math.floor(stake.hachi_locked * proportionalAPY)
-              const annualReward = Math.floor(stake.hachi_locked * userAPY)
+              const proportionalAPY = (daysLocked / STAKING_CONFIG.seasonDuration) * userAPY
+              const currentReward = Math.floor((stake.koban_locked || 0) * proportionalAPY)
+              const seasonReward = Math.floor((stake.koban_locked || 0) * userAPY)
+              const progressPercent = Math.min((daysLocked / STAKING_CONFIG.seasonDuration) * 100, 100)
               
               return (
                 <div 
@@ -323,12 +378,14 @@ export function StakingTab() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-primary" />
-                      <span className="font-bold">{formatNumber(stake.hachi_locked)}</span>
-                      <span className="text-sm text-muted-foreground">HACHI</span>
+                      <Lock className="w-4 h-4 text-amber-500" />
+                      <span className="font-bold">{formatNumber(stake.koban_locked || 0)}</span>
+                      <span className="text-sm text-muted-foreground">KOBAN</span>
                     </div>
-                    <Badge variant="outline">{daysLocked} dias</Badge>
+                    <Badge variant="outline">{daysLocked} / 90 dias</Badge>
                   </div>
+
+                  <Progress value={progressPercent} className="h-2" />
                   
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -336,8 +393,8 @@ export function StakingTab() {
                       <p className="font-bold text-hachi-green">+{formatNumber(currentReward)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Ganancia anual</p>
-                      <p className="font-bold text-amber-500">+{formatNumber(annualReward)}</p>
+                      <p className="text-muted-foreground">Ganancia total (90d)</p>
+                      <p className="font-bold text-amber-500">+{formatNumber(seasonReward)}</p>
                     </div>
                   </div>
 
@@ -351,7 +408,7 @@ export function StakingTab() {
                     {unstaking === stake.id ? 'Procesando...' : (
                       <>
                         <Unlock className="w-4 h-4 mr-2" />
-                        Retirar ({formatNumber(stake.hachi_locked + currentReward)} HACHI)
+                        Retirar ({formatNumber((stake.koban_locked || 0) + currentReward)} KOBAN)
                       </>
                     )}
                   </Button>
@@ -371,7 +428,7 @@ export function StakingTab() {
               <div>
                 <p className="font-medium">Mejora tu Hachi para mayor APY</p>
                 <p className="text-sm text-muted-foreground">
-                  Nivel 11+ aumenta tu APY. Nivel 20 = {(STAKING_CONFIG.maxAPY * 100)}% APY maximo
+                  Nivel 11+ aumenta tu APY. Nivel 20 = {(STAKING_CONFIG.maxAPY * 100)}% (o {(STAKING_CONFIG.maxAPYWithMembership * 100)}% con membresia)
                 </p>
               </div>
             </div>
@@ -392,7 +449,7 @@ export function StakingTab() {
                 className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
               >
                 <div>
-                  <span className="text-sm">{formatNumber(stake.hachi_locked)} HACHI</span>
+                  <span className="text-sm">{formatNumber(stake.koban_locked || 0)} KOBAN</span>
                   <Badge variant="outline" className="ml-2 text-xs text-hachi-green">
                     +{formatNumber(stake.reward_claimed)} ganado
                   </Badge>

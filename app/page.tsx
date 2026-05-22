@@ -12,6 +12,7 @@ import { PerfilTab } from '@/components/tabs/perfil-tab'
 import { AccesoriosTab } from '@/components/tabs/accesorios-tab'
 import { RankingTab } from '@/components/tabs/ranking-tab'
 import { StakingTab } from '@/components/tabs/staking-tab'
+import { ReferidosTab } from '@/components/tabs/referidos-tab'
 import { Spinner } from '@/components/ui/spinner'
 
 export default function HomePage() {
@@ -66,6 +67,7 @@ export default function HomePage() {
         {activeTab === 'accesorios' && <AccesoriosTab />}
         {activeTab === 'ranking' && <RankingTab />}
         {activeTab === 'staking' && <StakingTab />}
+        {activeTab === 'referidos' && <ReferidosTab />}
       </main>
 
       <BottomNav />

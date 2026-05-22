@@ -12,6 +12,7 @@ export const BASE_DAILY_CLAIM = 100 // HACHI KOBAN tokens
 
 // Water cost (HACHI) - INDISPENSABLE para producir
 export const DAILY_WATER_COST = 100 // HACHI tokens required daily
+export const WATER_COST = DAILY_WATER_COST // Alias
 
 // ============================================
 // TEMPORADA (3 MESES)
@@ -82,7 +83,8 @@ export interface FoodPack {
   id: string
   days: number
   wldCost: number
-  totalKobanValue: number // Valor en KOBAN antes del 20%
+  kobanValue: number // Valor en KOBAN antes del 20%
+  totalKobanValue: number // Alias
   dailyKobanReward: number // KOBAN diario despues del 20%
   label: string
   description: string
@@ -93,6 +95,7 @@ export const FOOD_PACKS: FoodPack[] = [
     id: 'pack_7',
     days: 7,
     wldCost: 1,
+    kobanValue: 1000,
     totalKobanValue: 1000, // 1 WLD * 1000
     dailyKobanReward: Math.floor((1000 * 0.8) / 7), // 114 KOBAN/dia
     label: 'Pack Semanal',
@@ -102,6 +105,7 @@ export const FOOD_PACKS: FoodPack[] = [
     id: 'pack_30',
     days: 30,
     wldCost: 3,
+    kobanValue: 3000,
     totalKobanValue: 3000,
     dailyKobanReward: Math.floor((3000 * 0.8) / 30), // 80 KOBAN/dia
     label: 'Pack Mensual',
@@ -111,6 +115,7 @@ export const FOOD_PACKS: FoodPack[] = [
     id: 'pack_90',
     days: 90,
     wldCost: 7,
+    kobanValue: 7000,
     totalKobanValue: 7000,
     dailyKobanReward: Math.floor((7000 * 0.8) / 90), // 62 KOBAN/dia
     label: 'Pack Temporada',
@@ -127,6 +132,7 @@ export const MEMBERSHIP_CONFIG = {
   apyBonus: 0.20, // +20% APY adicional (llega a 100%)
   upgradeDiscount: 0.10, // 10% descuento en mejoras de gatos
   hachiReturn: 0.60, // 60% del valor devuelto en HACHI
+  hachiReturnPercent: 0.60, // Alias para compatibilidad
   // 60% de 10 WLD = 6 WLD en HACHI distribuido en 90 dias
   dailyHachiReturn: function(hachiPriceInWld: number) {
     const totalHachi = (this.wldCost * this.hachiReturn) / hachiPriceInWld
@@ -143,6 +149,7 @@ export const STAKING_CONFIG = {
   baseAPY: 0.60, // 60% base APY anual
   maxAPY: 0.80, // 80% max APY sin membresia
   maxAPYWithMembership: 1.00, // 100% max APY con membresia
+  membershipAPYBonus: 0.20, // +20% bonus con membresia
   apyBonusPerLevel: 0.02, // 2% bonus por nivel de gato arriba de 10
 }
 
@@ -209,6 +216,9 @@ export const CHEST_TIERS: ChestTier[] = [
   },
 ]
 
+// Alias for compatibility
+export const CHEST_CONFIGS = CHEST_TIERS
+
 // ============================================
 // REFERRAL SYSTEM
 // ============================================
@@ -224,6 +234,19 @@ export const REFERRAL_CONFIG = {
     diamond: { referrals: 100, bonus: 100000 },
   }
 }
+
+// REFERRAL_RANKS for UI compatibility
+export const REFERRAL_RANKS = [
+  { rank: 1, name: 'Novato', referrals_needed: 0, bonus_hachi: 0 },
+  { rank: 2, name: 'Bronze', referrals_needed: 5, bonus_hachi: 2000 },
+  { rank: 3, name: 'Silver', referrals_needed: 15, bonus_hachi: 5000 },
+  { rank: 4, name: 'Gold', referrals_needed: 30, bonus_hachi: 15000 },
+  { rank: 5, name: 'Platinum', referrals_needed: 50, bonus_hachi: 30000 },
+  { rank: 6, name: 'Diamond', referrals_needed: 100, bonus_hachi: 100000 },
+]
+
+// Legacy alias
+export const REFERRAL_REWARDS = REFERRAL_RANKS
 
 // ============================================
 // RANKING POINTS
@@ -347,6 +370,11 @@ export const ACCESSORY_CONFIGS: AccessoryConfig[] = [
 // ============================================
 export function getLevelConfig(level: number): LevelConfig {
   return LEVEL_CONFIGS[Math.min(level, MAX_LEVEL) - 1]
+}
+
+export function getDailyProduction(level: number, hasFoodBonus: boolean = false): number {
+  const config = getLevelConfig(level)
+  return config.totalDailyProduction
 }
 
 export function getUpgradeCost(currentLevel: number, hasMembership: boolean = false): number {
