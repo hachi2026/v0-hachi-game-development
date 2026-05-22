@@ -1,16 +1,26 @@
 // Hachi Hub Game Configuration
 // All economic values and level configurations
 
+// ============================================
+// TOKEN SYSTEM
+// ============================================
+// HACHI: Token principal - agua, cofres, ranking
+// KOBAN: Token secundario - produccion, staking rewards
+
 // Base daily claim amount (HACHI KOBAN production)
 export const BASE_DAILY_CLAIM = 100 // HACHI KOBAN tokens
-export const DAILY_FOOD_COST = 100 // HACHI tokens required for feeding
 
-// Level configurations (20 levels)
-// Levels 1-10: Common (2 WLD each, +100 KOBAN/day)
-// Levels 11-15: Rare (5 WLD each, +250 KOBAN/day)
-// Levels 16-18: Epic (7 WLD each, +400 KOBAN/day)
-// Levels 19-20: Legendary (10 WLD each, +600 KOBAN/day)
+// Water cost (HACHI) - INDISPENSABLE para producir
+export const DAILY_WATER_COST = 100 // HACHI tokens required daily
 
+// ============================================
+// TEMPORADA (3 MESES)
+// ============================================
+export const SEASON_DURATION_DAYS = 90
+
+// ============================================
+// LEVEL CONFIGS (20 niveles)
+// ============================================
 export interface LevelConfig {
   level: number
   wldCost: number
@@ -43,7 +53,6 @@ export const LEVEL_CONFIGS: LevelConfig[] = Array.from({ length: 20 }, (_, i) =>
     rarity = 'legendary'
   }
 
-  // Calculate cumulative daily bonus
   let totalBonus = 0
   for (let l = 2; l <= level; l++) {
     if (l <= 10) totalBonus += 100
@@ -63,7 +72,191 @@ export const LEVEL_CONFIGS: LevelConfig[] = Array.from({ length: 20 }, (_, i) =>
 
 export const MAX_LEVEL = 20
 
-// Accessory types and tiers
+// ============================================
+// FOOD PACKS (Producen KOBAN)
+// ============================================
+// Formula: (WLD_VALUE * KOBAN_RATE - 20%) / DAYS = KOBAN diario bonus
+export const KOBAN_PER_WLD = 1000 // Tasa de conversion
+
+export interface FoodPack {
+  id: string
+  days: number
+  wldCost: number
+  totalKobanValue: number // Valor en KOBAN antes del 20%
+  dailyKobanReward: number // KOBAN diario despues del 20%
+  label: string
+  description: string
+}
+
+export const FOOD_PACKS: FoodPack[] = [
+  {
+    id: 'pack_7',
+    days: 7,
+    wldCost: 1,
+    totalKobanValue: 1000, // 1 WLD * 1000
+    dailyKobanReward: Math.floor((1000 * 0.8) / 7), // 114 KOBAN/dia
+    label: 'Pack Semanal',
+    description: '7 dias de alimento + produccion KOBAN',
+  },
+  {
+    id: 'pack_30',
+    days: 30,
+    wldCost: 3,
+    totalKobanValue: 3000,
+    dailyKobanReward: Math.floor((3000 * 0.8) / 30), // 80 KOBAN/dia
+    label: 'Pack Mensual',
+    description: '30 dias de alimento + produccion KOBAN',
+  },
+  {
+    id: 'pack_90',
+    days: 90,
+    wldCost: 7,
+    totalKobanValue: 7000,
+    dailyKobanReward: Math.floor((7000 * 0.8) / 90), // 62 KOBAN/dia
+    label: 'Pack Temporada',
+    description: '90 dias de alimento + produccion KOBAN (mejor valor)',
+  },
+]
+
+// ============================================
+// MEMBERSHIP (10 WLD)
+// ============================================
+export const MEMBERSHIP_CONFIG = {
+  wldCost: 10,
+  durationDays: 90, // 3 meses
+  apyBonus: 0.20, // +20% APY adicional (llega a 100%)
+  upgradeDiscount: 0.10, // 10% descuento en mejoras de gatos
+  hachiReturn: 0.60, // 60% del valor devuelto en HACHI
+  // 60% de 10 WLD = 6 WLD en HACHI distribuido en 90 dias
+  dailyHachiReturn: function(hachiPriceInWld: number) {
+    const totalHachi = (this.wldCost * this.hachiReturn) / hachiPriceInWld
+    return Math.floor(totalHachi / this.durationDays)
+  }
+}
+
+// ============================================
+// STAKING CONFIG (KOBAN -> KOBAN)
+// ============================================
+export const STAKING_CONFIG = {
+  minLock: 100, // Minimum KOBAN to stake
+  seasonDuration: SEASON_DURATION_DAYS, // 90 dias (3 meses)
+  baseAPY: 0.60, // 60% base APY anual
+  maxAPY: 0.80, // 80% max APY sin membresia
+  maxAPYWithMembership: 1.00, // 100% max APY con membresia
+  apyBonusPerLevel: 0.02, // 2% bonus por nivel de gato arriba de 10
+}
+
+// Calculate APY based on cat level and membership
+export function calculateAPY(catLevel: number, hasMembership: boolean = false): number {
+  let baseAPY = STAKING_CONFIG.baseAPY
+  
+  // Bonus por nivel de gato
+  if (catLevel > 10) {
+    const bonusLevels = catLevel - 10
+    baseAPY += bonusLevels * STAKING_CONFIG.apyBonusPerLevel
+  }
+  
+  // Cap segun membresia
+  const maxAPY = hasMembership ? STAKING_CONFIG.maxAPYWithMembership : STAKING_CONFIG.maxAPY
+  return Math.min(baseAPY, maxAPY)
+}
+
+// ============================================
+// CHEST CONFIG (5 cuotas, 5 dias)
+// ============================================
+export const CHEST_CONFIG = {
+  totalDeposits: 5, // 5 cuotas
+  revealDays: 5, // Se revela despues de 5 dias
+  depositCountsAsTask: true, // Cada deposito cuenta como tarea diaria
+}
+
+export interface ChestTier {
+  tier: 'basico' | 'avanzado' | 'premium' | 'exclusivo'
+  name: string
+  totalHachiCost: number
+  depositPerDay: number // totalHachiCost / 5
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+}
+
+export const CHEST_TIERS: ChestTier[] = [
+  { 
+    tier: 'basico', 
+    name: 'Cofre Basico', 
+    totalHachiCost: 500, 
+    depositPerDay: 100,
+    rarity: 'common' 
+  },
+  { 
+    tier: 'avanzado', 
+    name: 'Cofre Avanzado', 
+    totalHachiCost: 2500, 
+    depositPerDay: 500,
+    rarity: 'rare' 
+  },
+  { 
+    tier: 'premium', 
+    name: 'Cofre Premium', 
+    totalHachiCost: 10000, 
+    depositPerDay: 2000,
+    rarity: 'epic' 
+  },
+  { 
+    tier: 'exclusivo', 
+    name: 'Cofre Exclusivo', 
+    totalHachiCost: 50000, 
+    depositPerDay: 10000,
+    rarity: 'legendary' 
+  },
+]
+
+// ============================================
+// REFERRAL SYSTEM
+// ============================================
+export const REFERRAL_CONFIG = {
+  signupBonus: 1000, // HACHI para el referido
+  referrerBonus: 1000, // HACHI para el referidor
+  // Bonos adicionales por rango
+  rankBonuses: {
+    bronze: { referrals: 5, bonus: 2000 },
+    silver: { referrals: 15, bonus: 5000 },
+    gold: { referrals: 30, bonus: 15000 },
+    platinum: { referrals: 50, bonus: 30000 },
+    diamond: { referrals: 100, bonus: 100000 },
+  }
+}
+
+// ============================================
+// RANKING POINTS
+// ============================================
+// Todos los HACHI ganados suman al ranking
+export const RANKING_POINTS = {
+  dailyClaim: 10,
+  waterPurchase: 5, // Pagar agua diaria
+  chestDeposit: 20, // Cada deposito de cofre (5 por cofre)
+  chestOpen: 100, // Abrir cofre (despues de 5 dias)
+  missionComplete: 25,
+  adWatch: 15,
+  referral: 100,
+  catUpgrade: 75,
+  equipAccessory: 10,
+  stakingDeposit: 10, // Por cada 100 KOBAN
+  foodPackPurchase: 50, // Comprar pack de comida
+  membershipPurchase: 500, // Comprar membresia
+}
+
+// Pool progresiva - mas puntos = mas % del pool
+export const RANKING_POOL_TIERS = [
+  { minPoints: 0, poolShare: 0.01 }, // 1% del pool
+  { minPoints: 1000, poolShare: 0.02 },
+  { minPoints: 5000, poolShare: 0.05 },
+  { minPoints: 15000, poolShare: 0.10 },
+  { minPoints: 30000, poolShare: 0.15 },
+  { minPoints: 50000, poolShare: 0.20 },
+]
+
+// ============================================
+// ACCESSORIES
+// ============================================
 export type AccessoryType = 'gafas' | 'gorro' | 'pantalon' | 'peine' | 'arenero' | 'casa'
 export type AccessoryTier = 'basico' | 'avanzado' | 'premium' | 'exclusivo'
 
@@ -149,129 +342,20 @@ export const ACCESSORY_CONFIGS: AccessoryConfig[] = [
   },
 ]
 
-// Chest configurations for gacha system
-export interface ChestConfig {
-  tier: AccessoryTier
-  name: string
-  hachiCost: number
-  rarity: 'common' | 'rare' | 'epic' | 'legendary'
-}
-
-export const CHEST_CONFIGS: ChestConfig[] = [
-  { tier: 'basico', name: 'Cofre Basico', hachiCost: 100, rarity: 'common' },
-  { tier: 'avanzado', name: 'Cofre Avanzado', hachiCost: 500, rarity: 'rare' },
-  { tier: 'premium', name: 'Cofre Premium', hachiCost: 2000, rarity: 'epic' },
-  { tier: 'exclusivo', name: 'Cofre Exclusivo', hachiCost: 10000, rarity: 'legendary' },
-]
-
-// Food pack configurations
-export interface FoodPack {
-  days: 30 | 60 | 90
-  wldCost: number
-  bonusTokens: number
-  dailyBonusFromFood: number
-  label: string
-  description: string
-}
-
-export const FOOD_PACKS: FoodPack[] = [
-  {
-    days: 30,
-    wldCost: 5,
-    bonusTokens: 0,
-    dailyBonusFromFood: 0,
-    label: 'Pack 30 Dias',
-    description: 'Produccion continua durante 30 dias',
-  },
-  {
-    days: 60,
-    wldCost: 10,
-    bonusTokens: 0,
-    dailyBonusFromFood: 0,
-    label: 'Pack 60 Dias',
-    description: 'Produccion continua durante 60 dias',
-  },
-  {
-    days: 90,
-    wldCost: 15,
-    bonusTokens: 200000,
-    dailyBonusFromFood: Math.floor(200000 / 90),
-    label: 'Pack 90 Dias',
-    description: 'Produccion continua + 50% bonus en tokens',
-  },
-]
-
-// Daily food (single day)
-export const DAILY_FOOD = {
-  days: 1,
-  hachiCost: 100,
-  label: 'Alimento Diario',
-  description: 'Mantiene 1 dia de produccion',
-}
-
-// Referral rewards
-export const REFERRAL_REWARDS = {
-  signup: 100,
-  level_5: 200,
-  level_10: 500,
-}
-
-// Staking APY configuration (ANNUAL)
-export const STAKING_CONFIG = {
-  minLock: 1000, // Minimum HACHI to lock
-  seasonDuration: 365, // days (annual)
-  baseAPY: 0.50, // 50% base APY
-  maxAPY: 0.80, // 80% max APY with upgraded cats
-  apyBonusPerLevel: 0.015, // 1.5% bonus per cat level above 10
-}
-
-// Calculate APY based on cat level
-export function calculateAPY(catLevel: number): number {
-  if (catLevel <= 10) return STAKING_CONFIG.baseAPY
-  const bonusLevels = catLevel - 10
-  const totalAPY = STAKING_CONFIG.baseAPY + (bonusLevels * STAKING_CONFIG.apyBonusPerLevel)
-  return Math.min(totalAPY, STAKING_CONFIG.maxAPY)
-}
-
-// Ranking points - EVERYTHING adds points
-export const RANKING_POINTS = {
-  dailyClaim: 10, // Reclamar produccion diaria
-  feedCat: 5, // Alimentar gato
-  openChest: 50, // Abrir un cofre
-  depositToChest: 5, // Depositar HACHI a cofre
-  missionComplete: 25, // Completar mision
-  adWatch: 15, // Ver anuncio
-  referral: 100, // Traer amigo
-  catUpgrade: 75, // Mejorar gato
-  equipAccessory: 10, // Equipar accesorio
-  stakingDeposit: 20, // Hacer staking (por cada 1000 HACHI)
-}
-
-// Cat images mapping (20 unique cats)
-export const CAT_RARITIES = {
-  common: { min: 1, max: 10, color: 'gray' },
-  rare: { min: 11, max: 15, color: 'blue' },
-  epic: { min: 16, max: 18, color: 'purple' },
-  legendary: { min: 19, max: 20, color: 'gold' },
-}
-
-// Helper functions
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
 export function getLevelConfig(level: number): LevelConfig {
   return LEVEL_CONFIGS[Math.min(level, MAX_LEVEL) - 1]
 }
 
-export function getUpgradeCost(currentLevel: number): number {
+export function getUpgradeCost(currentLevel: number, hasMembership: boolean = false): number {
   if (currentLevel >= MAX_LEVEL) return 0
-  return getLevelConfig(currentLevel + 1).wldCost
-}
-
-export function getDailyProduction(level: number, hasFoodBonus: boolean = false): number {
-  const config = getLevelConfig(level)
-  let production = config.totalDailyProduction
-  if (hasFoodBonus) {
-    production += FOOD_PACKS[2].dailyBonusFromFood
+  const baseCost = getLevelConfig(currentLevel + 1).wldCost
+  if (hasMembership) {
+    return baseCost * (1 - MEMBERSHIP_CONFIG.upgradeDiscount)
   }
-  return production
+  return baseCost
 }
 
 export function getRarityFromLevel(level: number): 'common' | 'rare' | 'epic' | 'legendary' {
@@ -309,4 +393,22 @@ export function formatNumber(num: number): string {
     return (num / 1000).toFixed(1) + 'K'
   }
   return num.toLocaleString()
+}
+
+export function getChestTier(tier: string): ChestTier | undefined {
+  return CHEST_TIERS.find(c => c.tier === tier)
+}
+
+export function getFoodPack(id: string): FoodPack | undefined {
+  return FOOD_PACKS.find(p => p.id === id)
+}
+
+export function getReferralRank(referralCount: number): string {
+  const { rankBonuses } = REFERRAL_CONFIG
+  if (referralCount >= rankBonuses.diamond.referrals) return 'diamond'
+  if (referralCount >= rankBonuses.platinum.referrals) return 'platinum'
+  if (referralCount >= rankBonuses.gold.referrals) return 'gold'
+  if (referralCount >= rankBonuses.silver.referrals) return 'silver'
+  if (referralCount >= rankBonuses.bronze.referrals) return 'bronze'
+  return 'none'
 }
