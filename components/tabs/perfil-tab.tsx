@@ -178,21 +178,21 @@ export function PerfilTab() {
                 <span className="text-muted-foreground">Amigo se une</span>
                 <span className="font-bold text-hachi-green flex items-center gap-1">
                   <Gift className="w-3 h-3" />
-                  +{REFERRAL_REWARDS.signup} HACHI
+                  +1,000 HACHI
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Alcanza nivel 5</span>
                 <span className="font-bold text-hachi-green flex items-center gap-1">
                   <Gift className="w-3 h-3" />
-                  +{REFERRAL_REWARDS.level_5} HACHI
+                  +5,000 HACHI
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Alcanza nivel 10</span>
                 <span className="font-bold text-hachi-green flex items-center gap-1">
                   <Gift className="w-3 h-3" />
-                  +{REFERRAL_REWARDS.level_10} HACHI
+                  +10,000 HACHI
                 </span>
               </div>
             </div>

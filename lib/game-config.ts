@@ -245,8 +245,22 @@ export const REFERRAL_RANKS = [
   { rank: 6, name: 'Diamond', referrals_needed: 100, bonus_hachi: 100000 },
 ]
 
-// Legacy alias
-export const REFERRAL_REWARDS = REFERRAL_RANKS
+// Recompensas por referido - niveles del amigo
+export const REFERRAL_REWARDS = {
+  signup: 1000, // Amigo se une
+  level_5: 5000, // Amigo alcanza nivel 5
+  level_10: 10000, // Amigo alcanza nivel 10
+}
+
+// ============================================
+// WATER PACKS (Agua por dias)
+// ============================================
+export const WATER_PACKS = [
+  { days: 1, hachiCost: 100, label: '1 Dia' },
+  { days: 7, hachiCost: 600, label: '7 Dias' }, // 100*7*0.85
+  { days: 30, hachiCost: 2400, label: '30 Dias' }, // 100*30*0.80
+  { days: 90, hachiCost: 6750, label: 'Temporada' }, // 100*90*0.75
+]
 
 // ============================================
 // RANKING POINTS

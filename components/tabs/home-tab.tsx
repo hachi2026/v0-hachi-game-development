@@ -1,15 +1,47 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useHachi } from '@/lib/hachi-context'
 import { CatAvatar } from '@/components/cat-avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { formatNumber, getLevelConfig, MAX_LEVEL } from '@/lib/game-config'
-import { Coins, Zap, TrendingUp, Gift, AlertCircle, CircleDollarSign, Package } from 'lucide-react'
+import { Coins, Zap, TrendingUp, Gift, AlertCircle, CircleDollarSign, Package, Clock } from 'lucide-react'
 
 export function HomeTab() {
   const { user, setActiveTab } = useHachi()
+  const [timeUntilClaim, setTimeUntilClaim] = useState<string>('')
+
+  // Timer for next claim
+  useEffect(() => {
+    if (!user?.hachi?.last_claim_at) return
+
+    const updateTimer = () => {
+      const lastClaim = new Date(user.hachi.last_claim_at!)
+      const nextClaim = new Date(lastClaim)
+      nextClaim.setDate(nextClaim.getDate() + 1)
+      nextClaim.setHours(0, 0, 0, 0)
+      
+      const now = new Date()
+      const diff = nextClaim.getTime() - now.getTime()
+      
+      if (diff <= 0) {
+        setTimeUntilClaim('')
+        return
+      }
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+      
+      setTimeUntilClaim(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [user?.hachi?.last_claim_at])
 
   if (!user) return null
 
@@ -107,6 +139,15 @@ export function HomeTab() {
               <CircleDollarSign className="w-5 h-5 mr-2" />
               {canClaim ? `Reclamar ${formatNumber(totalKobanProduction)} KOBAN` : 'Ya reclamaste hoy'}
             </Button>
+
+            {/* Timer for next claim */}
+            {!canClaim && timeUntilClaim && (
+              <div className="flex items-center justify-center gap-2 mt-3 p-3 bg-muted/50 rounded-lg">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Proximo reclamo en:</span>
+                <span className="font-mono font-bold text-primary">{timeUntilClaim}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

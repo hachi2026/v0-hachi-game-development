@@ -225,7 +225,7 @@ export function MisionesTab() {
       id: 'referrals_5',
       title: 'Embajador',
       description: 'Invita a 5 amigos',
-      reward: 1000,
+      reward: 6000,
       progress: Math.min(profile.total_referrals, 5),
       target: 5,
       completed: profile.total_referrals >= 5,
@@ -384,15 +384,30 @@ export function MisionesTab() {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
             <span className="text-xs">Amigo se une</span>
-            <span className="text-xs font-bold text-hachi-green">+{REFERRAL_REWARDS.signup} HACHI</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-hachi-green">+1,000 HACHI</span>
+              <Button size="sm" variant="outline" className="h-6 text-xs px-2">
+                Reclamar
+              </Button>
+            </div>
           </div>
           <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
             <span className="text-xs">Amigo alcanza nivel 5</span>
-            <span className="text-xs font-bold text-hachi-green">+{REFERRAL_REWARDS.level_5} HACHI</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-hachi-green">+5,000 HACHI</span>
+              <Button size="sm" variant="outline" className="h-6 text-xs px-2">
+                Reclamar
+              </Button>
+            </div>
           </div>
           <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
             <span className="text-xs">Amigo alcanza nivel 10</span>
-            <span className="text-xs font-bold text-hachi-green">+{REFERRAL_REWARDS.level_10} HACHI</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-hachi-green">+10,000 HACHI</span>
+              <Button size="sm" variant="outline" className="h-6 text-xs px-2">
+                Reclamar
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

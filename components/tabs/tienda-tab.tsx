@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { FOOD_PACKS, WATER_COST, MEMBERSHIP_CONFIG, formatNumber, RANKING_POINTS } from '@/lib/game-config'
+import { FOOD_PACKS, WATER_COST, MEMBERSHIP_CONFIG, formatNumber, RANKING_POINTS, WATER_PACKS } from '@/lib/game-config'
 import { 
   ShoppingBag, 
   Zap, 
@@ -34,34 +34,51 @@ export function TiendaTab() {
   const { profile, hachi, energyDaysRemaining, canWater } = user
   const hasMembership = profile.has_membership
 
+  // Calculate water days remaining
+  const waterDaysRemaining = hachi.water_expires_at 
+    ? Math.max(0, Math.ceil((new Date(hachi.water_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
+
   // Check if water is needed (24h cooldown)
   const lastWater = hachi.last_water_at ? new Date(hachi.last_water_at) : null
   const now = new Date()
-  const needsWater = !lastWater || (now.getTime() - lastWater.getTime()) >= 24 * 60 * 60 * 1000
+  const needsWater = waterDaysRemaining === 0
 
-  const handlePurchaseWater = async () => {
-    if (profile.hachi_balance < WATER_COST) {
+  const handlePurchaseWater = async (packIndex: number) => {
+    const pack = WATER_PACKS[packIndex]
+    if (profile.hachi_balance < pack.hachiCost) {
       alert('No tienes suficiente HACHI')
       return
     }
     
-    setPurchasing('water')
+    setPurchasing(`water-${pack.days}`)
 
     try {
+      const expiresAt = new Date()
+      
+      // If already has water, extend from that date
+      if (hachi.water_expires_at && new Date(hachi.water_expires_at) > new Date()) {
+        expiresAt.setTime(new Date(hachi.water_expires_at).getTime())
+      }
+      expiresAt.setDate(expiresAt.getDate() + pack.days)
+
       // Deduct HACHI for water
       await supabase
         .from('profiles')
-        .update({ hachi_balance: profile.hachi_balance - WATER_COST })
+        .update({ hachi_balance: profile.hachi_balance - pack.hachiCost })
         .eq('id', profile.id)
 
-      // Update last water time
+      // Update water expiration
       await supabase
         .from('hachis')
-        .update({ last_water_at: new Date().toISOString() })
+        .update({ 
+          water_expires_at: expiresAt.toISOString(),
+          last_water_at: new Date().toISOString()
+        })
         .eq('id', hachi.id)
 
-      updateBalance(-WATER_COST)
-      updateRankingPoints(RANKING_POINTS.feedCat)
+      updateBalance(-pack.hachiCost)
+      updateRankingPoints(RANKING_POINTS.waterPurchase)
       await refreshUser()
     } catch (error) {
       console.error('Error purchasing water:', error)
@@ -193,9 +210,10 @@ export function TiendaTab() {
               <Droplets className="w-5 h-5 text-blue-500" />
               <span className="text-sm font-medium">Agua</span>
             </div>
-            <p className={`text-lg font-bold ${needsWater ? 'text-destructive' : 'text-blue-500'}`}>
-              {needsWater ? 'Necesita!' : 'OK'}
+            <p className={`text-lg font-bold ${waterDaysRemaining > 0 ? 'text-blue-500' : 'text-destructive'}`}>
+              {waterDaysRemaining} dias
             </p>
+            <p className="text-xs text-muted-foreground">comprados</p>
           </CardContent>
         </Card>
         
@@ -208,6 +226,7 @@ export function TiendaTab() {
             <p className={`text-lg font-bold ${energyDaysRemaining > 0 ? 'text-hachi-green' : 'text-destructive'}`}>
               {energyDaysRemaining} dias
             </p>
+            <p className="text-xs text-muted-foreground">de alimento</p>
           </CardContent>
         </Card>
       </div>
@@ -237,7 +256,7 @@ export function TiendaTab() {
           <TabsTrigger value="membresia">Membresia</TabsTrigger>
         </TabsList>
 
-        {/* Esenciales - Agua diaria */}
+        {/* Esenciales - Agua por dias */}
         <TabsContent value="esenciales" className="space-y-4 mt-4">
           <Card className={`${needsWater ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-blue-500/30' : 'bg-card'}`}>
             <CardContent className="pt-6">
@@ -247,42 +266,49 @@ export function TiendaTab() {
                     <Droplets className="w-6 h-6 text-blue-500" />
                   </div>
                   <div>
-                    <h3 className="font-bold">Agua Diaria</h3>
-                    <p className="text-sm text-muted-foreground">Indispensable para tu gato</p>
+                    <h3 className="font-bold">Agua para tu Gato</h3>
+                    <p className="text-sm text-muted-foreground">Indispensable para reclamar</p>
                   </div>
                 </div>
-                {!needsWater && (
-                  <Badge variant="outline" className="text-hachi-green">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Hidratado
-                  </Badge>
-                )}
+                <div className="text-right">
+                  <p className={`text-lg font-bold ${waterDaysRemaining > 0 ? 'text-blue-500' : 'text-destructive'}`}>
+                    {waterDaysRemaining} dias
+                  </p>
+                  <p className="text-xs text-muted-foreground">disponibles</p>
+                </div>
               </div>
 
               <div className="p-3 bg-background/50 rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Tu gato necesita agua cada 24 horas para poder reclamar recompensas.
-                  Sin agua, no podras hacer el claim diario.
+                  Sin agua, tu gato no puede producir ni reclamar KOBAN. Compra agua por dias o por la temporada completa para ahorrar.
                 </p>
               </div>
 
-              <Button
-                className="w-full"
-                variant={needsWater ? 'default' : 'outline'}
-                disabled={purchasing === 'water' || !needsWater || profile.hachi_balance < WATER_COST}
-                onClick={handlePurchaseWater}
-              >
-                {purchasing === 'water' ? (
-                  <Sparkles className="w-4 h-4 animate-spin" />
-                ) : needsWater ? (
-                  <>
-                    <Droplets className="w-4 h-4 mr-2" />
-                    Dar Agua ({formatNumber(WATER_COST)} HACHI)
-                  </>
-                ) : (
-                  'Agua OK - Vuelve manana'
-                )}
-              </Button>
+              <div className="space-y-2">
+                {WATER_PACKS.map((pack, index) => {
+                  const isPopular = pack.days === 90
+                  const discount = pack.days === 7 ? '15%' : pack.days === 30 ? '20%' : pack.days === 90 ? '25%' : null
+                  
+                  return (
+                    <Button
+                      key={pack.days}
+                      variant={isPopular ? 'default' : 'outline'}
+                      className={`w-full justify-between h-14 ${isPopular ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : ''}`}
+                      disabled={purchasing === `water-${pack.days}` || profile.hachi_balance < pack.hachiCost}
+                      onClick={() => handlePurchaseWater(index)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Droplets className="w-4 h-4" />
+                        {pack.label}
+                        {discount && pack.days > 1 && (
+                          <Badge variant="secondary" className="text-xs">-{discount}</Badge>
+                        )}
+                      </span>
+                      <span className="font-bold">{formatNumber(pack.hachiCost)} HACHI</span>
+                    </Button>
+                  )
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -290,7 +316,7 @@ export function TiendaTab() {
             <CardContent className="pt-4 text-sm">
               <p className="font-medium mb-2">Sistema de Necesidades:</p>
               <ul className="space-y-1 text-muted-foreground text-xs">
-                <li>- <b>Agua:</b> 100 HACHI/dia (obligatorio)</li>
+                <li>- <b>Agua:</b> Compra por dias (descuentos por cantidad)</li>
                 <li>- <b>Alimento:</b> Packs WLD que producen KOBAN</li>
                 <li>- Sin agua = No puedes reclamar</li>
                 <li>- Sin alimento = No produces KOBAN extra</li>

@@ -26,7 +26,7 @@ import { formatNumber, STAKING_CONFIG, calculateAPY, RANKING_POINTS } from '@/li
 import type { Staking } from '@/lib/types'
 
 export function StakingTab() {
-  const { user, currentSeason, refreshUser, updateBalance, updateRankingPoints } = useHachi()
+  const { user, refreshUser, updateBalance, updateRankingPoints } = useHachi()
   const [stakes, setStakes] = useState<Staking[]>([])
   const [loading, setLoading] = useState(true)
   const [stakeAmount, setStakeAmount] = useState('')
@@ -68,7 +68,7 @@ export function StakingTab() {
   }
 
   const handleStake = async () => {
-    if (!user || !currentSeason || staking) return
+    if (!user || staking) return
     
     const amount = parseInt(stakeAmount)
     if (isNaN(amount) || amount < STAKING_CONFIG.minLock) {
@@ -86,7 +86,6 @@ export function StakingTab() {
     try {
       await supabase.from('staking').insert({
         user_id: user.profile.id,
-        season_id: currentSeason.id,
         koban_locked: amount
       })
       
@@ -118,8 +117,8 @@ export function StakingTab() {
     const now = new Date()
     const daysLocked = Math.floor((now.getTime() - lockedAt.getTime()) / (1000 * 60 * 60 * 24))
     
-    // Calculate proportional reward based on days locked (annual APY, season 90 days)
-    const proportionalAPY = (daysLocked / STAKING_CONFIG.seasonDuration) * userAPY
+    // Calculate proportional reward based on days locked (annual APY)
+    const proportionalAPY = (daysLocked / 365) * userAPY
     const reward = Math.floor(stake.koban_locked * (1 + proportionalAPY))
 
     setUnstaking(stake.id)
@@ -160,7 +159,7 @@ export function StakingTab() {
   const activeStakes = stakes.filter(s => s.is_active)
   const totalLocked = activeStakes.reduce((sum, s) => sum + (s.koban_locked || 0), 0)
   
-  // Calculate estimated season reward (90 days)
+  // Calculate estimated annual reward
   const estimatedSeasonReward = Math.floor(totalLocked * userAPY)
 
   return (
@@ -172,7 +171,7 @@ export function StakingTab() {
             <div>
               <h2 className="text-xl font-bold">Tu APY Actual</h2>
               <p className="text-3xl font-bold text-amber-500">{apyPercent}%</p>
-              <p className="text-sm text-muted-foreground">Por temporada (90 dias)</p>
+              <p className="text-sm text-muted-foreground">Anual (proporcional al tiempo)</p>
             </div>
             <div className="text-right space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -195,10 +194,11 @@ export function StakingTab() {
               <span>Como funciona el APY:</span>
             </div>
             <ul className="text-xs text-muted-foreground space-y-1 ml-6">
-              <li>Base: {(STAKING_CONFIG.baseAPY * 100)}% por temporada</li>
+              <li>Base: {(STAKING_CONFIG.baseAPY * 100)}% anual</li>
               <li>Gato nivel 11+: +2% por cada nivel</li>
               <li>Sin membresia: max {(STAKING_CONFIG.maxAPY * 100)}%</li>
               <li className="text-amber-500 font-medium">Con membresia: +20% bonus, max {(STAKING_CONFIG.maxAPYWithMembership * 100)}%</li>
+              <li>Retira cuando quieras (ganancia proporcional)</li>
             </ul>
           </div>
         </CardContent>
@@ -233,7 +233,7 @@ export function StakingTab() {
             <div>
               <h2 className="text-xl font-bold">Staking KOBAN</h2>
               <p className="text-sm text-muted-foreground">
-                Bloquea KOBAN y gana recompensas por temporada (90 dias)
+                Bloquea KOBAN y gana recompensas (retira cuando quieras)
               </p>
             </div>
             <Lock className="w-10 h-10 text-amber-500/30" />
@@ -248,7 +248,7 @@ export function StakingTab() {
               <p className="text-xs text-muted-foreground">KOBAN</p>
             </div>
             <div className="bg-background/50 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Ganancia Temporada</p>
+              <p className="text-xs text-muted-foreground">Ganancia Anual Est.</p>
               <p className="text-lg font-bold text-hachi-green">
                 +{formatNumber(estimatedSeasonReward)}
               </p>
@@ -257,26 +257,6 @@ export function StakingTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Season Info */}
-      {currentSeason && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium">{currentSeason.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Termina: {new Date(currentSeason.ends_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <Badge variant="outline">90 dias</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Stake Form */}
       <Card>
@@ -322,13 +302,13 @@ export function StakingTab() {
             <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <Gift className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-medium text-amber-500">Ganancia Estimada (90 dias)</span>
+                <span className="text-sm font-medium text-amber-500">Ganancia Estimada (1 ano)</span>
               </div>
               <p className="text-lg font-bold text-amber-500">
                 +{formatNumber(Math.floor(parseInt(stakeAmount) * userAPY))} KOBAN
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Con tu APY de {apyPercent}% {hasMembership ? '(incluye bonus member)' : ''}
+                Con tu APY de {apyPercent}% {hasMembership ? '(incluye bonus member)' : ''}. Retira cuando quieras.
               </p>
             </div>
           )}
@@ -366,10 +346,10 @@ export function StakingTab() {
               const lockedAt = new Date(stake.locked_at)
               const now = new Date()
               const daysLocked = Math.floor((now.getTime() - lockedAt.getTime()) / (1000 * 60 * 60 * 24))
-              const proportionalAPY = (daysLocked / STAKING_CONFIG.seasonDuration) * userAPY
+              const proportionalAPY = (daysLocked / 365) * userAPY
               const currentReward = Math.floor((stake.koban_locked || 0) * proportionalAPY)
-              const seasonReward = Math.floor((stake.koban_locked || 0) * userAPY)
-              const progressPercent = Math.min((daysLocked / STAKING_CONFIG.seasonDuration) * 100, 100)
+              const annualReward = Math.floor((stake.koban_locked || 0) * userAPY)
+              const progressPercent = Math.min((daysLocked / 365) * 100, 100)
               
               return (
                 <div 
@@ -382,7 +362,7 @@ export function StakingTab() {
                       <span className="font-bold">{formatNumber(stake.koban_locked || 0)}</span>
                       <span className="text-sm text-muted-foreground">KOBAN</span>
                     </div>
-                    <Badge variant="outline">{daysLocked} / 90 dias</Badge>
+                    <Badge variant="outline">{daysLocked} dias</Badge>
                   </div>
 
                   <Progress value={progressPercent} className="h-2" />
@@ -393,8 +373,8 @@ export function StakingTab() {
                       <p className="font-bold text-hachi-green">+{formatNumber(currentReward)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Ganancia total (90d)</p>
-                      <p className="font-bold text-amber-500">+{formatNumber(seasonReward)}</p>
+                      <p className="text-muted-foreground">Ganancia anual est.</p>
+                      <p className="font-bold text-amber-500">+{formatNumber(annualReward)}</p>
                     </div>
                   </div>
 
