@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { REFERRAL_REWARDS, formatNumber, MAX_LEVEL, RANKING_POINTS } from '@/lib/game-config'
 import { 
   Target, 
@@ -18,7 +20,12 @@ import {
   Zap,
   ExternalLink,
   Play,
-  Eye
+  Eye,
+  Plus,
+  Youtube,
+  Send,
+  Twitter,
+  Link as LinkIcon
 } from 'lucide-react'
 import type { Advertisement, AdView } from '@/lib/types'
 
@@ -39,6 +46,12 @@ export function MisionesTab() {
   const [adViews, setAdViews] = useState<AdView[]>([])
   const [loadingAds, setLoadingAds] = useState(true)
   const [watchingAd, setWatchingAd] = useState<string | null>(null)
+  
+  // Create ad form
+  const [showCreateAd, setShowCreateAd] = useState(false)
+  const [newAdLink, setNewAdLink] = useState('')
+  const [newAdPlatform, setNewAdPlatform] = useState<'youtube' | 'telegram' | 'x'>('youtube')
+  const [creatingAd, setCreatingAd] = useState(false)
 
   const supabase = createClient()
 
@@ -72,6 +85,58 @@ export function MisionesTab() {
       console.error('Error fetching ads:', error)
     } finally {
       setLoadingAds(false)
+    }
+  }
+
+  const handleCreateAd = async () => {
+    if (!user || !newAdLink.trim()) return
+    
+    setCreatingAd(true)
+    
+    try {
+      // Validate link based on platform
+      let isValid = false
+      if (newAdPlatform === 'youtube' && newAdLink.includes('youtube.com') || newAdLink.includes('youtu.be')) {
+        isValid = true
+      } else if (newAdPlatform === 'telegram' && newAdLink.includes('t.me')) {
+        isValid = true
+      } else if (newAdPlatform === 'x' && (newAdLink.includes('twitter.com') || newAdLink.includes('x.com'))) {
+        isValid = true
+      }
+      
+      if (!isValid) {
+        alert(`Link invalido para ${newAdPlatform}. Verifica el formato.`)
+        setCreatingAd(false)
+        return
+      }
+      
+      // Create ad (user-submitted, needs approval or auto-approve for now)
+      await supabase.from('advertisements').insert({
+        advertiser_name: user.profile.username || 'Usuario',
+        link_url: newAdLink,
+        platform: newAdPlatform,
+        hachi_reward: 50, // Base reward for user-submitted ads
+        views_remaining: 100,
+        is_active: true,
+        submitted_by: user.profile.id
+      })
+      
+      setNewAdLink('')
+      setShowCreateAd(false)
+      fetchAds()
+    } catch (error) {
+      console.error('Error creating ad:', error)
+    } finally {
+      setCreatingAd(false)
+    }
+  }
+
+  const getPlatformIcon = (platform: string) => {
+    switch(platform) {
+      case 'youtube': return <Youtube className="w-4 h-4 text-red-500" />
+      case 'telegram': return <Send className="w-4 h-4 text-blue-400" />
+      case 'x': return <Twitter className="w-4 h-4" />
+      default: return <LinkIcon className="w-4 h-4" />
     }
   }
 
@@ -285,17 +350,89 @@ export function MisionesTab() {
       </div>
 
       {/* Sponsored Ads Section */}
-      {ads.length > 0 && (
-        <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
-          <CardHeader className="pb-2">
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <Play className="w-4 h-4 text-primary" />
               Gana HACHI viendo anuncios
-              <Badge variant="outline" className="ml-auto text-xs">Patrocinado</Badge>
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {ads.map((ad) => {
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-7 text-xs"
+              onClick={() => setShowCreateAd(!showCreateAd)}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Agregar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Create Ad Form */}
+          {showCreateAd && (
+            <div className="p-3 bg-background/50 rounded-lg border border-border/50 space-y-3">
+              <p className="text-xs font-medium">Comparte tu link y otros usuarios lo veran:</p>
+              
+              {/* Platform Selection */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={newAdPlatform === 'youtube' ? 'default' : 'outline'}
+                  className={`flex-1 h-8 text-xs ${newAdPlatform === 'youtube' ? 'bg-red-500 hover:bg-red-600' : ''}`}
+                  onClick={() => setNewAdPlatform('youtube')}
+                >
+                  <Youtube className="w-3 h-3 mr-1" />
+                  YouTube
+                </Button>
+                <Button
+                  size="sm"
+                  variant={newAdPlatform === 'telegram' ? 'default' : 'outline'}
+                  className={`flex-1 h-8 text-xs ${newAdPlatform === 'telegram' ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+                  onClick={() => setNewAdPlatform('telegram')}
+                >
+                  <Send className="w-3 h-3 mr-1" />
+                  Telegram
+                </Button>
+                <Button
+                  size="sm"
+                  variant={newAdPlatform === 'x' ? 'default' : 'outline'}
+                  className={`flex-1 h-8 text-xs ${newAdPlatform === 'x' ? 'bg-black hover:bg-gray-800' : ''}`}
+                  onClick={() => setNewAdPlatform('x')}
+                >
+                  <Twitter className="w-3 h-3 mr-1" />
+                  X
+                </Button>
+              </div>
+              
+              {/* Link Input */}
+              <div className="space-y-1">
+                <Input
+                  placeholder={
+                    newAdPlatform === 'youtube' ? 'https://youtube.com/watch?v=...' :
+                    newAdPlatform === 'telegram' ? 'https://t.me/...' :
+                    'https://x.com/...'
+                  }
+                  value={newAdLink}
+                  onChange={(e) => setNewAdLink(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              
+              <Button
+                size="sm"
+                className="w-full h-8"
+                disabled={creatingAd || !newAdLink.trim()}
+                onClick={handleCreateAd}
+              >
+                {creatingAd ? 'Creando...' : 'Publicar Anuncio'}
+              </Button>
+            </div>
+          )}
+          
+          {/* Ads List */}
+          {ads.length > 0 ? (
+            ads.map((ad) => {
               const hasWatched = adViews.find(v => v.ad_id === ad.id)
               
               return (
@@ -303,12 +440,8 @@ export function MisionesTab() {
                   key={ad.id}
                   className={`flex items-center gap-3 p-3 rounded-lg ${hasWatched ? 'bg-muted/30' : 'bg-background/50'}`}
                 >
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                    {ad.image_url ? (
-                      <img src={ad.image_url} alt={ad.advertiser_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Eye className="w-5 h-5 text-muted-foreground" />
-                    )}
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                    {getPlatformIcon(ad.platform || 'link')}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{ad.advertiser_name}</p>
@@ -342,10 +475,14 @@ export function MisionesTab() {
                   )}
                 </div>
               )
-            })}
-          </CardContent>
-        </Card>
-      )}
+            })
+          ) : (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              No hay anuncios disponibles. Se el primero en agregar uno!
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Daily Missions */}
       <div>

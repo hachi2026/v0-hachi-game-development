@@ -124,10 +124,12 @@ export interface Advertisement {
   advertiser_name: string
   image_url: string
   link_url: string
+  platform: 'youtube' | 'telegram' | 'x' | 'link'
   wld_paid: number
   hachi_reward: number
   views_remaining: number
   is_active: boolean
+  submitted_by: string | null
   created_at: string
 }
 

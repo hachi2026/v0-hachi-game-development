@@ -263,23 +263,87 @@ export const WATER_PACKS = [
 ]
 
 // ============================================
-// RANKING POINTS
+// RANKING POINTS (Escalonados)
 // ============================================
 // Todos los HACHI ganados suman al ranking
 export const RANKING_POINTS = {
   dailyClaim: 10,
-  waterPurchase: 5, // Pagar agua diaria
-  chestDeposit: 20, // Cada deposito de cofre (5 por cofre)
-  chestOpen: 100, // Abrir cofre (despues de 5 dias)
+  waterPurchase: 5,
+  // Puntos por alimento segun pack
+  foodPack7: 25,
+  foodPack30: 100,
+  foodPack90: 300, // Temporada completa
+  // Puntos por deposito de cofre (por cuota)
+  chestDepositBasico: 10,
+  chestDepositAvanzado: 25,
+  chestDepositPremium: 50,
+  chestDepositExclusivo: 100,
+  // Puntos por abrir cofre (despues de 5 dias)
+  chestOpenBasico: 50,
+  chestOpenAvanzado: 150,
+  chestOpenPremium: 400,
+  chestOpenExclusivo: 1000,
+  // Puntos por deposito de staking (escalonado)
+  stakingDeposit100: 5,
+  stakingDeposit1000: 50,
+  stakingDeposit10000: 500,
+  stakingDeposit100000: 5000,
+  // Otros
   missionComplete: 25,
   adWatch: 15,
   referral: 100,
   catUpgrade: 75,
   equipAccessory: 10,
-  stakingDeposit: 10, // Por cada 100 KOBAN
-  foodPackPurchase: 50, // Comprar pack de comida
-  membershipPurchase: 500, // Comprar membresia
+  membershipPurchase: 500,
 }
+
+// Helper para obtener puntos de deposito de cofre
+export function getChestDepositPoints(tier: string): number {
+  switch(tier) {
+    case 'basico': return RANKING_POINTS.chestDepositBasico
+    case 'avanzado': return RANKING_POINTS.chestDepositAvanzado
+    case 'premium': return RANKING_POINTS.chestDepositPremium
+    case 'exclusivo': return RANKING_POINTS.chestDepositExclusivo
+    default: return RANKING_POINTS.chestDepositBasico
+  }
+}
+
+// Helper para obtener puntos de abrir cofre
+export function getChestOpenPoints(tier: string): number {
+  switch(tier) {
+    case 'basico': return RANKING_POINTS.chestOpenBasico
+    case 'avanzado': return RANKING_POINTS.chestOpenAvanzado
+    case 'premium': return RANKING_POINTS.chestOpenPremium
+    case 'exclusivo': return RANKING_POINTS.chestOpenExclusivo
+    default: return RANKING_POINTS.chestOpenBasico
+  }
+}
+
+// Helper para obtener puntos de staking segun cantidad
+export function getStakingPoints(amount: number): number {
+  if (amount >= 100000) return RANKING_POINTS.stakingDeposit100000
+  if (amount >= 10000) return RANKING_POINTS.stakingDeposit10000
+  if (amount >= 1000) return RANKING_POINTS.stakingDeposit1000
+  return RANKING_POINTS.stakingDeposit100
+}
+
+// Helper para obtener puntos de food pack
+export function getFoodPackPoints(days: number): number {
+  if (days >= 90) return RANKING_POINTS.foodPack90
+  if (days >= 30) return RANKING_POINTS.foodPack30
+  return RANKING_POINTS.foodPack7
+}
+
+// ============================================
+// WORLDCHAIN TOKEN ADDRESSES
+// ============================================
+export const WORLDCHAIN_TOKENS = {
+  WLD: '0x2cFc85d8E48F8EAB294be644d9E25C3030863003',
+  HACHI: '0x0000000000000000000000000000000000000000', // TODO: Replace with actual HACHI address
+  KOBAN: '0x0000000000000000000000000000000000000000', // TODO: Replace with actual KOBAN address after deployment
+}
+
+export const WORLDCHAIN_RPC = 'https://worldchain-mainnet.g.alchemy.com/public'
 
 // Pool progresiva - mas puntos = mas % del pool
 export const RANKING_POOL_TIERS = [
