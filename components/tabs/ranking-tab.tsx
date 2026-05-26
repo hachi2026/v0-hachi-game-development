@@ -35,26 +35,76 @@ export function RankingTab() {
   const [rankings, setRankings] = useState<RankingWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [userPosition, setUserPosition] = useState<number | null>(null)
+  const [localSeason, setLocalSeason] = useState<any>(currentSeason)
 
   const supabase = createClient()
 
   useEffect(() => {
-    fetchRankings()
+    initializeAndFetch()
   }, [currentSeason])
 
-  const fetchRankings = async () => {
-    if (!currentSeason) return
-    
+  const initializeAndFetch = async () => {
     try {
       setLoading(true)
       
+      let season = currentSeason
+      
+      // If no season exists, create one
+      if (!season) {
+        const { data: existingSeason } = await supabase
+          .from('seasons')
+          .select('*')
+          .eq('is_active', true)
+          .single()
+        
+        if (existingSeason) {
+          season = existingSeason
+        } else {
+          // Create a new season
+          const now = new Date()
+          const endsAt = new Date(now)
+          endsAt.setDate(endsAt.getDate() + 90)
+          
+          const { data: newSeason } = await supabase
+            .from('seasons')
+            .insert({
+              id: `season_${Date.now()}`,
+              name: 'Temporada 1',
+              starts_at: now.toISOString(),
+              ends_at: endsAt.toISOString(),
+              is_active: true,
+              total_reward_pool: 100000
+            })
+            .select()
+            .single()
+          
+          if (newSeason) {
+            season = newSeason
+          }
+        }
+      }
+      
+      setLocalSeason(season)
+      
+      if (season) {
+        await fetchRankings(season.id)
+      }
+    } catch (error) {
+      console.error('Error initializing season:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchRankings = async (seasonId: string) => {
+    try {
       const { data } = await supabase
         .from('rankings')
         .select(`
           *,
           profile:profiles(*)
         `)
-        .eq('season_id', currentSeason.id)
+        .eq('season_id', seasonId)
         .order('points', { ascending: false })
         .limit(100)
       
@@ -69,8 +119,6 @@ export function RankingTab() {
       }
     } catch (error) {
       console.error('Error fetching rankings:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -99,8 +147,8 @@ export function RankingTab() {
     )
   }
 
-  const seasonEndsIn = currentSeason 
-    ? Math.max(0, Math.ceil((new Date(currentSeason.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const seasonEndsIn = localSeason 
+    ? Math.max(0, Math.ceil((new Date(localSeason.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0
 
   return (
@@ -110,7 +158,7 @@ export function RankingTab() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold">{currentSeason?.name || 'Temporada Actual'}</h2>
+              <h2 className="text-xl font-bold">{localSeason?.name || 'Temporada Actual'}</h2>
               <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                 <Clock className="w-4 h-4" />
                 <span className="text-sm">{seasonEndsIn} dias restantes</span>
@@ -123,7 +171,7 @@ export function RankingTab() {
             <div className="bg-background/50 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Pool de Premios</p>
               <p className="text-lg font-bold text-primary">
-                {formatNumber(currentSeason?.total_reward_pool || 0)}
+                {formatNumber(localSeason?.total_reward_pool || 0)}
               </p>
               <p className="text-xs text-muted-foreground">KOBAN</p>
             </div>
