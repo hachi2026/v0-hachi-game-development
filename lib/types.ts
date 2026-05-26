@@ -25,6 +25,7 @@ export interface Hachi {
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
   energy_days: number
   energy_expires_at: string | null
+  water_expires_at: string | null
   last_claim_at: string | null
   last_water_at: string | null
   total_production: number

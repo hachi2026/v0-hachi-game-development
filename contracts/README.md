@@ -2,7 +2,7 @@
 
 ## Sistema Completo para Worldchain con World ID
 
-Suite de 11 contratos inteligentes con integracion completa de World ID.
+Suite de 12 contratos inteligentes con integracion completa de World ID.
 
 ---
 
@@ -21,6 +21,33 @@ Suite de 11 contratos inteligentes con integracion completa de World ID.
 | 9 | **HachiReferrals** | `9_HachiReferrals.sol` | Sistema referidos |
 | 10 | **HachiFoodPacks** | `10_HachiFoodPacks.sol` | Packs comida (producen KOBAN) |
 | 11 | **HachiChests** | `11_HachiChests.sol` | Cofres gacha (5 cuotas) |
+| 12 | **HachiTreasury** | `12_HachiTreasury.sol` | Tesoreria central (economia) |
+
+---
+
+## HachiTreasury (Contrato Central de Economia)
+
+El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
+
+### Funciones Principales:
+
+- `receiveUpgradePayment()` - Recibe pago WLD por mejoras
+- `receiveAdPayment()` - Recibe pago WLD de anunciantes
+- `receiveMembershipPayment()` - Recibe pago WLD de membresias
+- `receiveFoodPackPayment()` - Recibe pago WLD de packs
+- `executeKobanBuyback()` - Ejecuta recompra de KOBAN
+- `executeHachiBuyback()` - Ejecuta recompra de HACHI
+- `distributeReward()` - Distribuye recompensas a usuarios
+- `getTreasuryStatus()` - Estado actual de la tesoreria
+
+### Distribucion Automatica:
+
+| Fuente | KOBAN Buyback | HACHI Buyback | Season Reserve | Admin |
+|--------|---------------|---------------|----------------|-------|
+| Mejoras gatos | 70% | - | 20% | 10% |
+| Publicidad | - | 90% | - | 10% |
+| Membresias | - | 60% (user) | - | 40% |
+| Food Packs | 80% | - | - | 20% |
 
 ---
 
