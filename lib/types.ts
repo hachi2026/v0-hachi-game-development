@@ -96,9 +96,21 @@ export interface Staking {
   season_id: string
   koban_locked: number // Ahora es KOBAN, no HACHI
   locked_at: string
+  last_claim_at: string | null
   unlocked_at: string | null
   reward_claimed: number
   is_active: boolean
+}
+
+export interface HachiLock {
+  id: string
+  user_id: string
+  hachi_locked: number
+  locked_at: string
+  last_claim_at: string | null
+  is_active: boolean
+  total_claimed: number
+  created_at: string
 }
 
 export interface Ranking {
@@ -124,10 +136,12 @@ export interface Advertisement {
   advertiser_name: string
   image_url: string
   link_url: string
+  platform: 'youtube' | 'telegram' | 'x' | 'link'
   wld_paid: number
   hachi_reward: number
   views_remaining: number
   is_active: boolean
+  submitted_by: string | null
   created_at: string
 }
 

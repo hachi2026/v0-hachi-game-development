@@ -16,8 +16,7 @@ import {
   LEVEL_CONFIGS,
   MAX_LEVEL,
   RANKING_POINTS,
-  WATER_PACKS,
-  DAILY_WATER_COST
+  SEASON_DURATION_DAYS
 } from '@/lib/game-config'
 import { 
   Coins, 
@@ -37,10 +36,12 @@ export function HachiTab() {
   const [claiming, setClaiming] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [showWaterModal, setShowWaterModal] = useState(false)
-  const [buyingWater, setBuyingWater] = useState<number | null>(null)
+  const [buyingWater, setBuyingWater] = useState(false)
 
   const supabase = createClient()
+
+  // Water cost for full season (90 days) - 25% discount
+  const SEASON_WATER_COST = 6750 // 100 * 90 * 0.75
 
   if (!user) return null
 
@@ -55,14 +56,13 @@ export function HachiTab() {
     ? Math.max(0, Math.ceil((new Date(hachi.water_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0
 
-  const handleBuyWater = async (packIndex: number) => {
-    const pack = WATER_PACKS[packIndex]
-    if (profile.hachi_balance < pack.hachiCost) {
+  const handleBuyWater = async () => {
+    if (profile.hachi_balance < SEASON_WATER_COST) {
       alert('No tienes suficiente HACHI')
       return
     }
 
-    setBuyingWater(packIndex)
+    setBuyingWater(true)
 
     try {
       const expiresAt = new Date()
@@ -71,12 +71,12 @@ export function HachiTab() {
       if (hachi.water_expires_at && new Date(hachi.water_expires_at) > new Date()) {
         expiresAt.setTime(new Date(hachi.water_expires_at).getTime())
       }
-      expiresAt.setDate(expiresAt.getDate() + pack.days)
+      expiresAt.setDate(expiresAt.getDate() + SEASON_DURATION_DAYS)
 
       // Deduct HACHI
       await supabase
         .from('profiles')
-        .update({ hachi_balance: profile.hachi_balance - pack.hachiCost })
+        .update({ hachi_balance: profile.hachi_balance - SEASON_WATER_COST })
         .eq('id', profile.id)
 
       // Update water expiration
@@ -88,13 +88,12 @@ export function HachiTab() {
         })
         .eq('id', hachi.id)
 
-      updateBalance(-pack.hachiCost)
+      updateBalance(-SEASON_WATER_COST)
       await refreshUser()
-      setShowWaterModal(false)
     } catch (error) {
       console.error('Error buying water:', error)
     } finally {
-      setBuyingWater(null)
+      setBuyingWater(false)
     }
   }
 
@@ -256,19 +255,20 @@ export function HachiTab() {
               <div className="flex items-center justify-between p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                 <div className="flex items-center gap-2">
                   <Droplets className={`w-5 h-5 ${waterDaysRemaining > 0 ? 'text-blue-500' : 'text-destructive'}`} />
-                  <span className="text-sm">Días de agua</span>
+                  <span className="text-sm">Dias de agua</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`font-bold ${waterDaysRemaining > 0 ? 'text-blue-500' : 'text-destructive'}`}>
-                    {waterDaysRemaining} días
+                    {waterDaysRemaining} dias
                   </span>
                   <Button 
                     size="sm" 
-                    variant="outline" 
-                    className="h-7 text-xs"
-                    onClick={() => setShowWaterModal(true)}
+                    variant={waterDaysRemaining === 0 ? "default" : "outline"}
+                    className={`h-7 text-xs ${waterDaysRemaining === 0 ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+                    onClick={handleBuyWater}
+                    disabled={buyingWater || profile.hachi_balance < SEASON_WATER_COST}
                   >
-                    Comprar
+                    {buyingWater ? '...' : `+90 dias (${formatNumber(SEASON_WATER_COST)})`}
                   </Button>
                 </div>
               </div>
@@ -411,62 +411,6 @@ export function HachiTab() {
         </div>
       )}
 
-      {/* Water Purchase Modal */}
-      {showWaterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <Card className="w-full max-w-sm border-blue-500/50">
-            <CardHeader>
-              <CardTitle className="text-center flex items-center justify-center gap-2">
-                <Droplets className="w-5 h-5 text-blue-500" />
-                Comprar Agua
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">
-                El agua es indispensable para que tu gato produzca. Sin agua no puedes reclamar.
-              </p>
-
-              <div className="p-3 bg-blue-500/10 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground">Dias de agua actuales</p>
-                <p className="text-xl font-bold text-blue-500">{waterDaysRemaining} dias</p>
-              </div>
-
-              <div className="space-y-2">
-                {WATER_PACKS.map((pack, index) => (
-                  <Button
-                    key={pack.days}
-                    variant="outline"
-                    className="w-full justify-between h-12"
-                    disabled={buyingWater === index || profile.hachi_balance < pack.hachiCost}
-                    onClick={() => handleBuyWater(index)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Droplets className="w-4 h-4 text-blue-500" />
-                      {pack.label}
-                    </span>
-                    <span className="font-bold">
-                      {buyingWater === index ? '...' : `${formatNumber(pack.hachiCost)} HACHI`}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Tu balance:</span>
-                <span className="font-bold">{formatNumber(profile.hachi_balance)} HACHI</span>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => setShowWaterModal(false)}
-              >
-                Cerrar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

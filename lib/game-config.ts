@@ -151,6 +151,37 @@ export const STAKING_CONFIG = {
   maxAPYWithMembership: 1.00, // 100% max APY con membresia
   membershipAPYBonus: 0.20, // +20% bonus con membresia
   apyBonusPerLevel: 0.02, // 2% bonus por nivel de gato arriba de 10
+  claimCooldown: 24, // horas entre claims/unstakes
+}
+
+// ============================================
+// HACHI LOCK CONFIG (HACHI -> HACHI)
+// ============================================
+export const HACHI_LOCK_CONFIG = {
+  minLock: 100, // Minimum HACHI to lock
+  baseAPY: 0.05, // 5% base APY anual
+  apyPerTwoLevels: 0.05, // +5% por cada 2 niveles (mejoras)
+  maxAPY: 0.50, // 50% max APY sin membresia
+  // Con membresia
+  membershipApyPerLevel: 0.07, // +7% por cada mejora
+  maxAPYWithMembership: 0.70, // 70% max APY con membresia
+  claimCooldown: 24, // horas entre claims/unstakes
+}
+
+// Calculate HACHI Lock APY based on cat level and membership
+export function calculateHachiLockAPY(catLevel: number, hasMembership: boolean = false): number {
+  const baseAPY = HACHI_LOCK_CONFIG.baseAPY
+  
+  if (hasMembership) {
+    // Con membresia: +7% por cada nivel (mejora)
+    const levelBonus = (catLevel - 1) * HACHI_LOCK_CONFIG.membershipApyPerLevel
+    return Math.min(baseAPY + levelBonus, HACHI_LOCK_CONFIG.maxAPYWithMembership)
+  } else {
+    // Sin membresia: +5% cada 2 niveles
+    const upgrades = Math.floor((catLevel - 1) / 2)
+    const levelBonus = upgrades * HACHI_LOCK_CONFIG.apyPerTwoLevels
+    return Math.min(baseAPY + levelBonus, HACHI_LOCK_CONFIG.maxAPY)
+  }
 }
 
 // Calculate APY based on cat level and membership
@@ -263,23 +294,90 @@ export const WATER_PACKS = [
 ]
 
 // ============================================
-// RANKING POINTS
+// RANKING POINTS (Escalonados)
 // ============================================
 // Todos los HACHI ganados suman al ranking
 export const RANKING_POINTS = {
   dailyClaim: 10,
-  waterPurchase: 5, // Pagar agua diaria
-  chestDeposit: 20, // Cada deposito de cofre (5 por cofre)
-  chestOpen: 100, // Abrir cofre (despues de 5 dias)
+  waterPurchase: 5,
+  // Puntos por alimento segun pack
+  foodPack7: 25,
+  foodPack30: 100,
+  foodPack90: 300, // Temporada completa
+  // Puntos por deposito de cofre (por cuota)
+  chestDepositBasico: 10,
+  chestDepositAvanzado: 25,
+  chestDepositPremium: 50,
+  chestDepositExclusivo: 100,
+  // Puntos por abrir cofre (despues de 5 dias)
+  chestOpenBasico: 50,
+  chestOpenAvanzado: 150,
+  chestOpenPremium: 400,
+  chestOpenExclusivo: 1000,
+  // Puntos por deposito de staking (escalonado)
+  stakingDeposit100: 5,
+  stakingDeposit1000: 50,
+  stakingDeposit10000: 500,
+  stakingDeposit100000: 5000,
+  // Otros
   missionComplete: 25,
   adWatch: 15,
   referral: 100,
   catUpgrade: 75,
   equipAccessory: 10,
-  stakingDeposit: 10, // Por cada 100 KOBAN
-  foodPackPurchase: 50, // Comprar pack de comida
-  membershipPurchase: 500, // Comprar membresia
+  membershipPurchase: 500,
 }
+
+// Helper para obtener puntos de deposito de cofre
+export function getChestDepositPoints(tier: string): number {
+  switch(tier) {
+    case 'basico': return RANKING_POINTS.chestDepositBasico
+    case 'avanzado': return RANKING_POINTS.chestDepositAvanzado
+    case 'premium': return RANKING_POINTS.chestDepositPremium
+    case 'exclusivo': return RANKING_POINTS.chestDepositExclusivo
+    default: return RANKING_POINTS.chestDepositBasico
+  }
+}
+
+// Helper para obtener puntos de abrir cofre
+export function getChestOpenPoints(tier: string): number {
+  switch(tier) {
+    case 'basico': return RANKING_POINTS.chestOpenBasico
+    case 'avanzado': return RANKING_POINTS.chestOpenAvanzado
+    case 'premium': return RANKING_POINTS.chestOpenPremium
+    case 'exclusivo': return RANKING_POINTS.chestOpenExclusivo
+    default: return RANKING_POINTS.chestOpenBasico
+  }
+}
+
+// Helper para obtener puntos de staking segun cantidad
+export function getStakingPoints(amount: number): number {
+  if (amount >= 100000) return RANKING_POINTS.stakingDeposit100000
+  if (amount >= 10000) return RANKING_POINTS.stakingDeposit10000
+  if (amount >= 1000) return RANKING_POINTS.stakingDeposit1000
+  return RANKING_POINTS.stakingDeposit100
+}
+
+// Helper para obtener puntos de food pack
+export function getFoodPackPoints(days: number): number {
+  if (days >= 90) return RANKING_POINTS.foodPack90
+  if (days >= 30) return RANKING_POINTS.foodPack30
+  return RANKING_POINTS.foodPack7
+}
+
+// ============================================
+// WORLDCHAIN TOKEN ADDRESSES
+// ============================================
+export const WORLDCHAIN_TOKENS = {
+  WLD: '0x2cFc85d8E48F8EAB294be644d9E25C3030863003',
+  HACHI: '0xbE0313f279580FDD1aA1b1b6888407E6504fF19E', // HACHI Token on Worldchain
+  KOBAN: '0x0000000000000000000000000000000000000000', // TODO: Replace with actual KOBAN address after deployment
+}
+
+export const WORLDCHAIN_RPC = 'https://worldchain-mainnet.g.alchemy.com/public'
+
+// PUF Link para comprar HACHI
+export const PUF_HACHI_LINK = 'https://world.org/mini-app?app_id=app_15daccf5b7d4ec9b7dbba044a8fdeab5&path=/token/0xbE0313f279580FDD1aA1b1b6888407E6504fF19E'
 
 // Pool progresiva - mas puntos = mas % del pool
 export const RANKING_POOL_TIERS = [

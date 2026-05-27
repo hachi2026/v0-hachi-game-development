@@ -2,7 +2,7 @@
 
 ## Sistema Completo para Worldchain con World ID
 
-Suite de 12 contratos inteligentes con integracion completa de World ID.
+Suite de 13 contratos inteligentes con integracion completa de World ID.
 
 ---
 
@@ -22,6 +22,7 @@ Suite de 12 contratos inteligentes con integracion completa de World ID.
 | 10 | **HachiFoodPacks** | `10_HachiFoodPacks.sol` | Packs comida (producen KOBAN) |
 | 11 | **HachiChests** | `11_HachiChests.sol` | Cofres gacha (5 cuotas) |
 | 12 | **HachiTreasury** | `12_HachiTreasury.sol` | Tesoreria central (economia) |
+| 13 | **HachiLock** | `13_HachiLock.sol` | Lock HACHI->HACHI (5-70% APY) |
 
 ---
 
@@ -29,25 +30,96 @@ Suite de 12 contratos inteligentes con integracion completa de World ID.
 
 El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
 
-### Funciones Principales:
+### Distribucion de Ingresos WLD:
 
-- `receiveUpgradePayment()` - Recibe pago WLD por mejoras
-- `receiveAdPayment()` - Recibe pago WLD de anunciantes
-- `receiveMembershipPayment()` - Recibe pago WLD de membresias
-- `receiveFoodPackPayment()` - Recibe pago WLD de packs
-- `executeKobanBuyback()` - Ejecuta recompra de KOBAN
-- `executeHachiBuyback()` - Ejecuta recompra de HACHI
-- `distributeReward()` - Distribuye recompensas a usuarios
-- `getTreasuryStatus()` - Estado actual de la tesoreria
+| Destino | Porcentaje |
+|---------|------------|
+| Owner (operaciones) | 10% |
+| Recompra KOBAN | 30% |
+| Recompra HACHI | 30% |
+| Reserva sistema | 30% |
 
-### Distribucion Automatica:
+**Reserva**: Owner decide cuando y que token recomprar (HACHI o KOBAN)
 
-| Fuente | KOBAN Buyback | HACHI Buyback | Season Reserve | Admin |
-|--------|---------------|---------------|----------------|-------|
-| Mejoras gatos | 70% | - | 20% | 10% |
-| Publicidad | - | 90% | - | 10% |
-| Membresias | - | 60% (user) | - | 40% |
-| Food Packs | 80% | - | - | 20% |
+### Distribucion de Ingresos HACHI:
+
+| Destino | Porcentaje |
+|---------|------------|
+| Pool de Rewards (Temporada) | 70% |
+| Pool de Locks (APY) | 30% |
+
+**TODOS los ingresos en HACHI van a rewards y locks.**
+
+### Funciones:
+
+- `receivePayment()` - Recibe pago WLD y distribuye (10/30/30/30)
+- `receiveHachi()` - Recibe HACHI y distribuye (70% rewards, 30% locks)
+- `fundSeasonRewards()` - Transfiere HACHI a pool de ranking
+- `fundLockRewards()` - Transfiere HACHI a pool de locks
+- `executeKobanBuyback()` - Ejecuta recompra de KOBAN (30%)
+- `executeHachiBuyback()` - Ejecuta recompra de HACHI (30%)
+- `executeReserveBuyback()` - Owner usa reserva para buyback manual
+- `withdrawOwnerFunds()` - Owner retira su 10%
+
+---
+
+## HachiRanking (Pool de Premios en HACHI)
+
+### Pool de Temporada:
+- **Primera temporada**: 1,000,000 HACHI
+- **Duracion**: 90 dias
+- **Al terminar**: se reparten premios y se reinicia
+
+### Distribucion de Premios:
+
+| Posicion | % del Pool |
+|----------|------------|
+| Top 1 | 20% |
+| Top 2-5 | 15% (div 4) |
+| Top 6-20 | 10% (div 15) |
+| Top 21-100 | 5% (div 80) |
+
+### Puntos Escalonados:
+
+| Actividad | Puntos |
+|-----------|--------|
+| Food Pack 7 dias | 25 |
+| Food Pack 30 dias | 100 |
+| Food Pack 90 dias | 300 |
+| Cofre Basico (deposito) | 10 |
+| Cofre Avanzado (deposito) | 25 |
+| Cofre Premium (deposito) | 50 |
+| Cofre Exclusivo (deposito) | 100 |
+| Abrir Cofre Basico | 50 |
+| Abrir Cofre Avanzado | 150 |
+| Abrir Cofre Premium | 400 |
+| Abrir Cofre Exclusivo | 1000 |
+| Staking 100+ | 5 |
+| Staking 1,000+ | 50 |
+| Staking 10,000+ | 500 |
+| Staking 100,000+ | 5000 |
+
+**Nota**: Puntos de staking solo se agregan despues de 24h stakeado.
+
+---
+
+## HachiLock (Lock HACHI -> HACHI)
+
+### APY por Nivel:
+
+| Sin Membresia | Con Membresia |
+|---------------|---------------|
+| 5% base | 5% base |
+| +5% cada 2 niveles | +7% por nivel |
+| Max 50% | Max 70% |
+
+**Ejemplo sin membresia**: Nivel 1 = 5%, Nivel 3 = 10%, Nivel 5 = 15%... Nivel 19+ = 50%
+**Ejemplo con membresia**: Nivel 1 = 5%, Nivel 2 = 12%, Nivel 3 = 19%... Nivel 10+ = 70%
+
+### Cooldown:
+- Claims cada 24 horas
+- Unstake cada 24 horas
+- Puntos ranking solo despues de 24h stakeado
 
 ---
 
@@ -214,7 +286,8 @@ El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
 ```
 WLD Token: 0x2cFc85d8E48F8EAB294be644d9E25C3030863003
 World ID Router: 0x17B354dD2595411ff79041f930e491A4Df39A278
-HACHI Token: [TU_DIRECCION_HACHI]
+HACHI Token: 0xbE0313f279580FDD1aA1b1b6888407E6504fF19E
+KOBAN Token: [DEPLOY_PENDING]
 ```
 
 ### Post-Deploy Setup
