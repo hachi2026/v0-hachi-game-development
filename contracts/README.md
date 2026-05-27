@@ -41,15 +41,65 @@ El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
 
 **Reserva**: Owner decide cuando y que token recomprar (HACHI o KOBAN)
 
+### Distribucion de Ingresos HACHI:
+
+| Destino | Porcentaje |
+|---------|------------|
+| Pool de Rewards (Temporada) | 70% |
+| Pool de Locks (APY) | 30% |
+
+**TODOS los ingresos en HACHI van a rewards y locks.**
+
 ### Funciones:
 
-- `receivePayment()` - Recibe cualquier pago WLD y distribuye automaticamente
-- `depositHachi()` / `depositKoban()` - Depositar tokens para pool de premios
-- `executeKobanBuyback()` - Ejecuta recompra automatica de KOBAN (30%)
-- `executeHachiBuyback()` - Ejecuta recompra automatica de HACHI (30%)
+- `receivePayment()` - Recibe pago WLD y distribuye (10/30/30/30)
+- `receiveHachi()` - Recibe HACHI y distribuye (70% rewards, 30% locks)
+- `fundSeasonRewards()` - Transfiere HACHI a pool de ranking
+- `fundLockRewards()` - Transfiere HACHI a pool de locks
+- `executeKobanBuyback()` - Ejecuta recompra de KOBAN (30%)
+- `executeHachiBuyback()` - Ejecuta recompra de HACHI (30%)
 - `executeReserveBuyback()` - Owner usa reserva para buyback manual
-- `distributeReward()` - Distribuye recompensas a usuarios
 - `withdrawOwnerFunds()` - Owner retira su 10%
+
+---
+
+## HachiRanking (Pool de Premios en HACHI)
+
+### Pool de Temporada:
+- **Primera temporada**: 1,000,000 HACHI
+- **Duracion**: 90 dias
+- **Al terminar**: se reparten premios y se reinicia
+
+### Distribucion de Premios:
+
+| Posicion | % del Pool |
+|----------|------------|
+| Top 1 | 20% |
+| Top 2-5 | 15% (div 4) |
+| Top 6-20 | 10% (div 15) |
+| Top 21-100 | 5% (div 80) |
+
+### Puntos Escalonados:
+
+| Actividad | Puntos |
+|-----------|--------|
+| Food Pack 7 dias | 25 |
+| Food Pack 30 dias | 100 |
+| Food Pack 90 dias | 300 |
+| Cofre Basico (deposito) | 10 |
+| Cofre Avanzado (deposito) | 25 |
+| Cofre Premium (deposito) | 50 |
+| Cofre Exclusivo (deposito) | 100 |
+| Abrir Cofre Basico | 50 |
+| Abrir Cofre Avanzado | 150 |
+| Abrir Cofre Premium | 400 |
+| Abrir Cofre Exclusivo | 1000 |
+| Staking 100+ | 5 |
+| Staking 1,000+ | 50 |
+| Staking 10,000+ | 500 |
+| Staking 100,000+ | 5000 |
+
+**Nota**: Puntos de staking solo se agregan despues de 24h stakeado.
 
 ---
 

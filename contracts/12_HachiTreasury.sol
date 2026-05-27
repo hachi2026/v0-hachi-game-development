@@ -18,7 +18,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * - 30% Recompra HACHI  
  * - 30% Reserva del sistema (disponible para buyback manual)
  * 
- * POOL DE PREMIOS: En HACHI
+ * INGRESOS HACHI:
+ * - 100% va a la pool de rewards (HachiRanking)
+ * - Paga locks y recompensas de temporada
+ * 
+ * POOL DE PREMIOS: 1,000,000 HACHI primera temporada
  */
 contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -34,7 +38,8 @@ contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
     // Treasury wallets
     address public ownerWallet;
     address public kobanRewardsPool;
-    address public hachiRewardsPool; // Pool de premios en HACHI
+    address public hachiRewardsPool; // Pool de premios en HACHI (HachiRanking contract)
+    address public hachiLockPool;    // Pool para pagar HACHI Lock APY
 
     // Distribution percentages (basis points, 10000 = 100%)
     uint256 public constant OWNER_PERCENT = 1000;       // 10%
@@ -59,6 +64,11 @@ contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
     // Deposited tokens for distribution
     uint256 public depositedHachi;
     uint256 public depositedKoban;
+    
+    // HACHI income tracking (all goes to rewards)
+    uint256 public totalHachiReceived;
+    uint256 public totalHachiToRewards;
+    uint256 public totalHachiToLocks;
 
     // Buyback stats
     uint256 public totalKobanBoughtBack;
@@ -74,6 +84,7 @@ contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
     event OwnerWithdrawal(uint256 amount);
     event TokensDeposited(bool isHachi, uint256 amount);
     event RewardDistributed(address indexed user, uint256 amount, bool isHachi, string rewardType);
+    event HachiReceivedForRewards(address indexed from, uint256 amount, uint256 toRewards, uint256 toLocks);
     
     constructor(
         address _wldToken,
@@ -142,6 +153,56 @@ contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
 
         emit PaymentReceived(from, wldAmount, paymentType);
         emit WldDistributed(forOwner, forKoban, forHachi, forReserve);
+    }
+
+    // ============================================
+    // HACHI INCOME (100% to rewards pool)
+    // ============================================
+
+    /**
+     * @notice Recibe HACHI y lo distribuye: 70% rewards, 30% locks
+     * @param from Quien envia HACHI
+     * @param amount Cantidad de HACHI
+     */
+    function receiveHachi(address from, uint256 amount) external nonReentrant whenNotPaused onlyRole(OPERATOR_ROLE) {
+        require(amount > 0, "Amount must be > 0");
+        
+        hachiToken.safeTransferFrom(from, address(this), amount);
+        
+        // 70% para pool de rewards de temporada
+        uint256 forRewards = (amount * 7000) / 10000;
+        // 30% para pagar APY de HACHI Lock
+        uint256 forLocks = amount - forRewards;
+        
+        totalHachiReceived += amount;
+        totalHachiToRewards += forRewards;
+        totalHachiToLocks += forLocks;
+        
+        depositedHachi += amount; // Total disponible para distribuir
+        
+        emit HachiReceivedForRewards(from, amount, forRewards, forLocks);
+    }
+
+    /**
+     * @notice Transfiere HACHI a la pool de ranking para premios de temporada
+     */
+    function fundSeasonRewards(uint256 amount) external nonReentrant onlyRole(ADMIN_ROLE) {
+        require(amount <= depositedHachi, "Insufficient HACHI");
+        require(hachiRewardsPool != address(0), "Rewards pool not set");
+        
+        depositedHachi -= amount;
+        hachiToken.safeTransfer(hachiRewardsPool, amount);
+    }
+
+    /**
+     * @notice Transfiere HACHI a la pool de locks para pagar APY
+     */
+    function fundLockRewards(uint256 amount) external nonReentrant onlyRole(ADMIN_ROLE) {
+        require(amount <= depositedHachi, "Insufficient HACHI");
+        require(hachiLockPool != address(0), "Lock pool not set");
+        
+        depositedHachi -= amount;
+        hachiToken.safeTransfer(hachiLockPool, amount);
     }
 
     // ============================================
@@ -381,6 +442,11 @@ contract HachiTreasury is AccessControl, ReentrancyGuard, Pausable {
     function setHachiRewardsPool(address _pool) external onlyRole(ADMIN_ROLE) {
         require(_pool != address(0), "Invalid address");
         hachiRewardsPool = _pool;
+    }
+
+    function setHachiLockPool(address _pool) external onlyRole(ADMIN_ROLE) {
+        require(_pool != address(0), "Invalid address");
+        hachiLockPool = _pool;
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {
