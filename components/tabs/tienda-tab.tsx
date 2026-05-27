@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { FOOD_PACKS, WATER_COST, MEMBERSHIP_CONFIG, formatNumber, RANKING_POINTS, WATER_PACKS, getFoodPackPoints } from '@/lib/game-config'
+import { FOOD_PACKS, WATER_COST, MEMBERSHIP_CONFIG, formatNumber, RANKING_POINTS, WATER_PACKS } from '@/lib/game-config'
 import { 
   ShoppingBag, 
   Zap, 
@@ -134,7 +134,7 @@ export function TiendaTab() {
         .update({ wld_spent: profile.wld_spent + pack.wldCost })
         .eq('id', profile.id)
 
-      updateRankingPoints(getFoodPackPoints(pack.days))
+      updateRankingPoints(RANKING_POINTS.feedCat)
       await refreshUser()
     } catch (error) {
       console.error('Error purchasing food pack:', error)
