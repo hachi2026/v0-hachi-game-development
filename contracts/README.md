@@ -2,7 +2,7 @@
 
 ## Sistema Completo para Worldchain con World ID
 
-Suite de 12 contratos inteligentes con integracion completa de World ID.
+Suite de 13 contratos inteligentes con integracion completa de World ID.
 
 ---
 
@@ -22,6 +22,7 @@ Suite de 12 contratos inteligentes con integracion completa de World ID.
 | 10 | **HachiFoodPacks** | `10_HachiFoodPacks.sol` | Packs comida (producen KOBAN) |
 | 11 | **HachiChests** | `11_HachiChests.sol` | Cofres gacha (5 cuotas) |
 | 12 | **HachiTreasury** | `12_HachiTreasury.sol` | Tesoreria central (economia) |
+| 13 | **HachiLock** | `13_HachiLock.sol` | Lock HACHI->HACHI (5-70% APY) |
 
 ---
 
@@ -29,25 +30,46 @@ Suite de 12 contratos inteligentes con integracion completa de World ID.
 
 El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
 
-### Funciones Principales:
+### Distribucion de Ingresos WLD:
 
-- `receiveUpgradePayment()` - Recibe pago WLD por mejoras
-- `receiveAdPayment()` - Recibe pago WLD de anunciantes
-- `receiveMembershipPayment()` - Recibe pago WLD de membresias
-- `receiveFoodPackPayment()` - Recibe pago WLD de packs
-- `executeKobanBuyback()` - Ejecuta recompra de KOBAN
-- `executeHachiBuyback()` - Ejecuta recompra de HACHI
+| Destino | Porcentaje |
+|---------|------------|
+| Owner (operaciones) | 10% |
+| Recompra KOBAN | 30% |
+| Recompra HACHI | 30% |
+| Reserva sistema | 30% |
+
+**Reserva**: Owner decide cuando y que token recomprar (HACHI o KOBAN)
+
+### Funciones:
+
+- `receivePayment()` - Recibe cualquier pago WLD y distribuye automaticamente
+- `depositHachi()` / `depositKoban()` - Depositar tokens para pool de premios
+- `executeKobanBuyback()` - Ejecuta recompra automatica de KOBAN (30%)
+- `executeHachiBuyback()` - Ejecuta recompra automatica de HACHI (30%)
+- `executeReserveBuyback()` - Owner usa reserva para buyback manual
 - `distributeReward()` - Distribuye recompensas a usuarios
-- `getTreasuryStatus()` - Estado actual de la tesoreria
+- `withdrawOwnerFunds()` - Owner retira su 10%
 
-### Distribucion Automatica:
+---
 
-| Fuente | KOBAN Buyback | HACHI Buyback | Season Reserve | Admin |
-|--------|---------------|---------------|----------------|-------|
-| Mejoras gatos | 70% | - | 20% | 10% |
-| Publicidad | - | 90% | - | 10% |
-| Membresias | - | 60% (user) | - | 40% |
-| Food Packs | 80% | - | - | 20% |
+## HachiLock (Lock HACHI -> HACHI)
+
+### APY por Nivel:
+
+| Sin Membresia | Con Membresia |
+|---------------|---------------|
+| 5% base | 5% base |
+| +5% cada 2 niveles | +7% por nivel |
+| Max 50% | Max 70% |
+
+**Ejemplo sin membresia**: Nivel 1 = 5%, Nivel 3 = 10%, Nivel 5 = 15%... Nivel 19+ = 50%
+**Ejemplo con membresia**: Nivel 1 = 5%, Nivel 2 = 12%, Nivel 3 = 19%... Nivel 10+ = 70%
+
+### Cooldown:
+- Claims cada 24 horas
+- Unstake cada 24 horas
+- Puntos ranking solo despues de 24h stakeado
 
 ---
 
@@ -214,7 +236,8 @@ El contrato de tesoreria maneja TODOS los flujos de ingresos y distribuciones.
 ```
 WLD Token: 0x2cFc85d8E48F8EAB294be644d9E25C3030863003
 World ID Router: 0x17B354dD2595411ff79041f930e491A4Df39A278
-HACHI Token: [TU_DIRECCION_HACHI]
+HACHI Token: 0xbE0313f279580FDD1aA1b1b6888407E6504fF19E
+KOBAN Token: [DEPLOY_PENDING]
 ```
 
 ### Post-Deploy Setup

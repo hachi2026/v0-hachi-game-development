@@ -370,11 +370,14 @@ export function getFoodPackPoints(days: number): number {
 // ============================================
 export const WORLDCHAIN_TOKENS = {
   WLD: '0x2cFc85d8E48F8EAB294be644d9E25C3030863003',
-  HACHI: '0x0000000000000000000000000000000000000000', // TODO: Replace with actual HACHI address
+  HACHI: '0xbE0313f279580FDD1aA1b1b6888407E6504fF19E', // HACHI Token on Worldchain
   KOBAN: '0x0000000000000000000000000000000000000000', // TODO: Replace with actual KOBAN address after deployment
 }
 
 export const WORLDCHAIN_RPC = 'https://worldchain-mainnet.g.alchemy.com/public'
+
+// PUF Link para comprar HACHI
+export const PUF_HACHI_LINK = 'https://world.org/mini-app?app_id=app_15daccf5b7d4ec9b7dbba044a8fdeab5&path=/token/0xbE0313f279580FDD1aA1b1b6888407E6504fF19E'
 
 // Pool progresiva - mas puntos = mas % del pool
 export const RANKING_POOL_TIERS = [

@@ -6,8 +6,8 @@ import { CatAvatar } from '@/components/cat-avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { formatNumber, getLevelConfig, MAX_LEVEL } from '@/lib/game-config'
-import { Coins, Zap, TrendingUp, Gift, AlertCircle, CircleDollarSign, Package, Clock } from 'lucide-react'
+import { formatNumber, getLevelConfig, MAX_LEVEL, PUF_HACHI_LINK } from '@/lib/game-config'
+import { Coins, Zap, TrendingUp, Gift, AlertCircle, CircleDollarSign, Package, Clock, ExternalLink } from 'lucide-react'
 
 export function HomeTab() {
   const { user, setActiveTab } = useHachi()
@@ -162,6 +162,15 @@ export function HomeTab() {
               <span className="text-xs">Balance HACHI</span>
             </div>
             <p className="text-lg font-bold text-primary">{formatNumber(profile.hachi_balance)}</p>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="w-full mt-2 h-7 text-xs"
+              onClick={() => window.open(PUF_HACHI_LINK, '_blank')}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              Comprar en PUF
+            </Button>
           </CardContent>
         </Card>
 
