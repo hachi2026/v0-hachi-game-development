@@ -151,6 +151,37 @@ export const STAKING_CONFIG = {
   maxAPYWithMembership: 1.00, // 100% max APY con membresia
   membershipAPYBonus: 0.20, // +20% bonus con membresia
   apyBonusPerLevel: 0.02, // 2% bonus por nivel de gato arriba de 10
+  claimCooldown: 24, // horas entre claims/unstakes
+}
+
+// ============================================
+// HACHI LOCK CONFIG (HACHI -> HACHI)
+// ============================================
+export const HACHI_LOCK_CONFIG = {
+  minLock: 100, // Minimum HACHI to lock
+  baseAPY: 0.05, // 5% base APY anual
+  apyPerTwoLevels: 0.05, // +5% por cada 2 niveles (mejoras)
+  maxAPY: 0.50, // 50% max APY sin membresia
+  // Con membresia
+  membershipApyPerLevel: 0.07, // +7% por cada mejora
+  maxAPYWithMembership: 0.70, // 70% max APY con membresia
+  claimCooldown: 24, // horas entre claims/unstakes
+}
+
+// Calculate HACHI Lock APY based on cat level and membership
+export function calculateHachiLockAPY(catLevel: number, hasMembership: boolean = false): number {
+  const baseAPY = HACHI_LOCK_CONFIG.baseAPY
+  
+  if (hasMembership) {
+    // Con membresia: +7% por cada nivel (mejora)
+    const levelBonus = (catLevel - 1) * HACHI_LOCK_CONFIG.membershipApyPerLevel
+    return Math.min(baseAPY + levelBonus, HACHI_LOCK_CONFIG.maxAPYWithMembership)
+  } else {
+    // Sin membresia: +5% cada 2 niveles
+    const upgrades = Math.floor((catLevel - 1) / 2)
+    const levelBonus = upgrades * HACHI_LOCK_CONFIG.apyPerTwoLevels
+    return Math.min(baseAPY + levelBonus, HACHI_LOCK_CONFIG.maxAPY)
+  }
 }
 
 // Calculate APY based on cat level and membership
