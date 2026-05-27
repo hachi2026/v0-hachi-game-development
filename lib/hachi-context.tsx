@@ -129,7 +129,33 @@ export function HachiProvider({ children }: { children: ReactNode }) {
       const hasFoodBonus = foodPurchases && foodPurchases.length > 0
 
       // Calculate daily production (KOBAN from cat level)
-      const dailyProduction = getDailyProduction(hachi.level, hasFoodBonus)
+      const dailyProduction = getDailyProduction(hachi.level, hasFoodBonus ?? false)
+
+      // Calculate water days remaining
+      const waterDaysRemaining = hachi.water_expires_at 
+        ? Math.max(0, Math.ceil((new Date(hachi.water_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0
+
+      // Get active food pack
+      const { data: activeFoodPack } = await supabase
+        .from('food_purchases')
+        .select('*')
+        .eq('user_id', profile.id)
+        .gt('expires_at', now.toISOString())
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      // Get membership
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('is_active', true)
+        .single()
+
+      // Calculate food production from active pack
+      const foodProduction = activeFoodPack?.daily_koban || 0
 
       setUser({
         profile: {
@@ -137,11 +163,15 @@ export function HachiProvider({ children }: { children: ReactNode }) {
           hachi_koban_balance: profile.hachi_koban_balance || 0,
         } as Profile,
         hachi: hachi as Hachi,
-        canClaim: canClaim && hasEnergy,
+        canClaim: !!(canClaim && hasEnergy),
+        canWater: waterDaysRemaining > 0,
         dailyProduction,
+        foodProduction,
         energyDaysRemaining,
         accessories: (userAccessories || []) as UserAccessory[],
         accessoryProduction,
+        membership: membership || null,
+        activeFoodPack: activeFoodPack || null,
       })
     } catch (err) {
       console.error('Error fetching user data:', err)

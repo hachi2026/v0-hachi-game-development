@@ -26,7 +26,7 @@ import {
   Clock,
   Calendar
 } from 'lucide-react'
-import { formatNumber, getRarityColor, getRarityBgColor, CHEST_CONFIGS, RANKING_POINTS } from '@/lib/game-config'
+import { formatNumber, getRarityColor, getRarityBgColor, CHEST_CONFIGS, getChestDepositPoints, getChestOpenPoints, RANKING_POINTS } from '@/lib/game-config'
 import type { Accessory, Chest, ChestDeposit, UserAccessory } from '@/lib/types'
 
 const ACCESSORY_ICONS: Record<string, React.ReactNode> = {
@@ -180,7 +180,7 @@ export function AccesoriosTab() {
         .eq('id', user.profile.id)
       
       updateBalance(-installmentAmount)
-      updateRankingPoints(RANKING_POINTS.depositToChest)
+      updateRankingPoints(getChestDepositPoints(chest.tier))
       
       fetchData()
       refreshUser()
@@ -233,7 +233,7 @@ export function AccesoriosTab() {
             accessory_id: randomAccessory.id
           }, { onConflict: 'user_id,accessory_id' })
         
-        updateRankingPoints(RANKING_POINTS.openChest)
+        updateRankingPoints(getChestOpenPoints(chest.tier))
         
         alert(`Felicidades! Ganaste: ${randomAccessory.name}`)
         fetchData()
@@ -475,7 +475,7 @@ export function AccesoriosTab() {
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground mb-3">
-                    +{RANKING_POINTS.depositToChest} puntos de ranking por cuota
+                    +{getChestDepositPoints(chest.tier)} puntos de ranking por cuota
                   </p>
 
                   {/* View possible prizes */}
