@@ -179,14 +179,16 @@ export function MisionesTab() {
       
       // Update ranking points
       if (currentSeason) {
-        await supabase.rpc('increment_ranking_points', {
-          p_user_id: user.profile.id,
-          p_season_id: currentSeason.id,
-          p_points: RANKING_POINTS.adWatch,
-          p_field: 'ads_watched'
-        }).catch(() => {
+        try {
+          await supabase.rpc('increment_ranking_points', {
+            p_user_id: user.profile.id,
+            p_season_id: currentSeason.id,
+            p_points: RANKING_POINTS.adWatch,
+            p_field: 'ads_watched'
+          })
+        } catch {
           // If function doesn't exist, update directly
-          supabase
+          await supabase
             .from('rankings')
             .upsert({
               user_id: user.profile.id,
@@ -194,7 +196,7 @@ export function MisionesTab() {
               points: RANKING_POINTS.adWatch,
               ads_watched: 1
             }, { onConflict: 'user_id,season_id' })
-        })
+        }
       }
       
       updateBalance(ad.hachi_reward)

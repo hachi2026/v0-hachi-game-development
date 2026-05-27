@@ -263,23 +263,23 @@ export function RankingTab() {
           <div className="flex items-center justify-between py-2 border-b border-border/30">
             <div className="flex items-center gap-2">
               <Cat className="w-4 h-4 text-primary" />
-              <span>Alimentar gato</span>
+              <span>Food Pack 7/30/90 dias</span>
             </div>
-            <Badge variant="secondary">+{RANKING_POINTS.feedCat}</Badge>
+            <Badge variant="secondary">+25/100/300</Badge>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border/30">
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-purple-500" />
-              <span>Abrir cofre</span>
+              <span>Abrir cofre (segun tier)</span>
             </div>
-            <Badge variant="secondary">+{RANKING_POINTS.openChest}</Badge>
+            <Badge variant="secondary">+50-1000</Badge>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border/30">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-blue-500" />
-              <span>Depositar en cofre</span>
+              <span>Depositar en cofre (segun tier)</span>
             </div>
-            <Badge variant="secondary">+{RANKING_POINTS.depositToChest}</Badge>
+            <Badge variant="secondary">+10-100</Badge>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border/30">
             <div className="flex items-center gap-2">
@@ -305,9 +305,9 @@ export function RankingTab() {
           <div className="flex items-center justify-between py-2 border-b border-border/30">
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-indigo-500" />
-              <span>Staking (por 1K HACHI)</span>
+              <span>Staking (segun cantidad)</span>
             </div>
-            <Badge variant="secondary">+{RANKING_POINTS.stakingDeposit}</Badge>
+            <Badge variant="secondary">+5-5000</Badge>
           </div>
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-2">
