@@ -73,7 +73,7 @@ export function RankingTab() {
               starts_at: now.toISOString(),
               ends_at: endsAt.toISOString(),
               is_active: true,
-              total_reward_pool: 100000
+              total_reward_pool: 1000000
             })
             .select()
             .single()
@@ -132,10 +132,10 @@ export function RankingTab() {
   }
 
   const getRewardTier = (position: number) => {
-    if (position === 1) return { reward: '50,000 KOBAN', accessory: 'Exclusivo', color: 'text-amber-400' }
-    if (position <= 5) return { reward: '25,000 KOBAN', accessory: 'Premium', color: 'text-purple-400' }
-    if (position <= 20) return { reward: '10,000 KOBAN', accessory: 'Avanzado', color: 'text-blue-400' }
-    if (position <= 100) return { reward: '2,500 KOBAN', accessory: null, color: 'text-gray-400' }
+    if (position === 1) return { reward: '200,000 HACHI', accessory: 'Exclusivo', color: 'text-amber-400' }
+    if (position <= 5) return { reward: '37,500 HACHI', accessory: 'Premium', color: 'text-purple-400' }
+    if (position <= 20) return { reward: '6,666 HACHI', accessory: 'Avanzado', color: 'text-blue-400' }
+    if (position <= 100) return { reward: '625 HACHI', accessory: null, color: 'text-gray-400' }
     return null
   }
 
@@ -171,9 +171,9 @@ export function RankingTab() {
             <div className="bg-background/50 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Pool de Premios</p>
               <p className="text-lg font-bold text-primary">
-                {formatNumber(localSeason?.total_reward_pool || 0)}
+                {formatNumber(localSeason?.total_reward_pool || 1000000)}
               </p>
-              <p className="text-xs text-muted-foreground">KOBAN</p>
+              <p className="text-xs text-muted-foreground">HACHI</p>
             </div>
             <div className="bg-background/50 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Participantes</p>
@@ -333,28 +333,28 @@ export function RankingTab() {
               <Crown className="w-4 h-4 text-amber-400" />
               <span className="text-sm">Top 1</span>
             </div>
-            <span className="text-sm font-medium text-amber-400">50,000 KOBAN + Exclusivo</span>
+            <span className="text-sm font-medium text-amber-400">200,000 HACHI + Exclusivo</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border/50">
             <div className="flex items-center gap-2">
               <Medal className="w-4 h-4 text-purple-400" />
               <span className="text-sm">Top 2-5</span>
             </div>
-            <span className="text-sm font-medium text-purple-400">25,000 KOBAN + Premium</span>
+            <span className="text-sm font-medium text-purple-400">37,500 HACHI + Premium</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border/50">
             <div className="flex items-center gap-2">
               <Medal className="w-4 h-4 text-blue-400" />
               <span className="text-sm">Top 6-20</span>
             </div>
-            <span className="text-sm font-medium text-blue-400">10,000 KOBAN + Avanzado</span>
+            <span className="text-sm font-medium text-blue-400">6,666 HACHI + Avanzado</span>
           </div>
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 text-gray-400" />
               <span className="text-sm">Top 21-100</span>
             </div>
-            <span className="text-sm font-medium text-gray-400">2,500 KOBAN</span>
+            <span className="text-sm font-medium text-gray-400">625 HACHI</span>
           </div>
         </CardContent>
       </Card>
