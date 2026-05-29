@@ -17,6 +17,12 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * 
  * Claims/Unstakes: Every 24 hours
  * Ranking points: Only after 24h staked
+ * 
+ * FIXES APPLIED:
+ * ✅ Rewards extraídos del balance del contrato en lugar de treasury
+ * ✅ Validación que el contrato tiene suficientes fondos para rewards
+ * ✅ Mejor manejo de treasury para emergencias
+ * ✅ Nueva función getAvailableRewardsBalance()
  */
 contract HachiLock is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -60,7 +66,7 @@ contract HachiLock is Ownable, ReentrancyGuard {
     uint256 public totalLocked;
     uint256 public totalRewardsDistributed;
     
-    // Treasury for rewards
+    // Treasury reference (solo para emergencias)
     address public treasury;
 
     // ============================================
@@ -71,12 +77,16 @@ contract HachiLock is Ownable, ReentrancyGuard {
     event RewardsClaimed(address indexed user, uint256 indexed lockId, uint256 reward);
     event HachiUnlocked(address indexed user, uint256 indexed lockId, uint256 amount, uint256 reward);
     event UserDataUpdated(address indexed user, uint256 catLevel, bool hasMembership);
+    event TreasuryUpdated(address newTreasury);
 
     // ============================================
     // CONSTRUCTOR
     // ============================================
     
     constructor(address _hachiToken, address _treasury) Ownable(msg.sender) {
+        require(_hachiToken != address(0), "Invalid HACHI token");
+        require(_treasury != address(0), "Invalid treasury address");
+        
         hachiToken = IERC20(_hachiToken);
         treasury = _treasury;
     }
@@ -115,6 +125,9 @@ contract HachiLock is Ownable, ReentrancyGuard {
     /**
      * @dev Claim rewards without unlocking
      * @param lockId The lock ID to claim from
+     * 
+     * FIX: Ahora retira rewards del balance del contrato en lugar de treasury
+     * Se valida que el contrato tiene suficientes fondos
      */
     function claimRewards(uint256 lockId) external nonReentrant {
         LockInfo storage lockInfo = userLocks[msg.sender][lockId];
@@ -124,13 +137,18 @@ contract HachiLock is Ownable, ReentrancyGuard {
         uint256 reward = calculateReward(msg.sender, lockId);
         require(reward > 0, "No rewards to claim");
         
+        // FIX: Validar que el contrato tiene suficientes fondos para rewards
+        uint256 contractBalance = hachiToken.balanceOf(address(this));
+        uint256 availableRewards = contractBalance - totalLocked;
+        require(availableRewards >= reward, "Insufficient rewards in contract");
+        
         // Update lock info
         lockInfo.lastClaimAt = block.timestamp;
         lockInfo.totalClaimed += reward;
-        
-        // Transfer reward from treasury
-        hachiToken.safeTransferFrom(treasury, msg.sender, reward);
         totalRewardsDistributed += reward;
+        
+        // FIX: Transfer reward directamente desde el balance del contrato (no de treasury)
+        hachiToken.safeTransfer(msg.sender, reward);
         
         emit RewardsClaimed(msg.sender, lockId, reward);
     }
@@ -138,6 +156,8 @@ contract HachiLock is Ownable, ReentrancyGuard {
     /**
      * @dev Unlock HACHI and claim any pending rewards
      * @param lockId The lock ID to unlock
+     * 
+     * FIX: Misma lógica de validación que claimRewards
      */
     function unlock(uint256 lockId) external nonReentrant {
         LockInfo storage lockInfo = userLocks[msg.sender][lockId];
@@ -146,6 +166,13 @@ contract HachiLock is Ownable, ReentrancyGuard {
         
         uint256 reward = calculateReward(msg.sender, lockId);
         uint256 amount = lockInfo.amount;
+        
+        // FIX: Validar que el contrato tiene suficientes fondos para rewards
+        if (reward > 0) {
+            uint256 contractBalance = hachiToken.balanceOf(address(this));
+            uint256 availableRewards = contractBalance - totalLocked;
+            require(availableRewards >= reward, "Insufficient rewards in contract");
+        }
         
         // Mark as inactive
         lockInfo.isActive = false;
@@ -158,10 +185,10 @@ contract HachiLock is Ownable, ReentrancyGuard {
         // Transfer principal back
         hachiToken.safeTransfer(msg.sender, amount);
         
-        // Transfer reward from treasury
+        // Transfer reward from contract balance
         if (reward > 0) {
-            hachiToken.safeTransferFrom(treasury, msg.sender, reward);
             totalRewardsDistributed += reward;
+            hachiToken.safeTransfer(msg.sender, reward);
         }
         
         emit HachiUnlocked(msg.sender, lockId, amount, reward);
@@ -195,7 +222,7 @@ contract HachiLock is Ownable, ReentrancyGuard {
         if (catLevel == 0) catLevel = 1; // Default level 1
         
         if (hasMembership) {
-            // +7% per level (mejora)
+            // +7% per level
             uint256 levelBonus = (catLevel - 1) * MEMBERSHIP_APY_PER_LEVEL;
             uint256 totalApy = BASE_APY + levelBonus;
             return totalApy > MAX_APY_MEMBERSHIP ? MAX_APY_MEMBERSHIP : totalApy;
@@ -256,6 +283,15 @@ contract HachiLock is Ownable, ReentrancyGuard {
         if (block.timestamp >= nextClaimTime) return 0;
         return nextClaimTime - block.timestamp;
     }
+    
+    /**
+     * @dev NEW: Get available rewards balance in contract
+     * Retorna el balance disponible para distribución (no incluye locked tokens)
+     */
+    function getAvailableRewardsBalance() external view returns (uint256) {
+        uint256 contractBalance = hachiToken.balanceOf(address(this));
+        return contractBalance > totalLocked ? contractBalance - totalLocked : 0;
+    }
 
     // ============================================
     // ADMIN FUNCTIONS
@@ -290,17 +326,22 @@ contract HachiLock is Ownable, ReentrancyGuard {
     
     /**
      * @dev Update treasury address
+     * FIX: Agregar validación de address(0)
      */
     function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Invalid treasury address");
         treasury = _treasury;
+        emit TreasuryUpdated(_treasury);
     }
     
     /**
      * @dev Emergency withdraw (only owner, only excess tokens)
+     * Permite retirar solo los rewards no distribuidos, nunca los locked tokens
      */
     function emergencyWithdraw(uint256 amount) external onlyOwner {
-        uint256 excess = hachiToken.balanceOf(address(this)) - totalLocked;
-        require(amount <= excess, "Cannot withdraw locked tokens");
+        uint256 contractBalance = hachiToken.balanceOf(address(this));
+        uint256 availableRewards = contractBalance - totalLocked;
+        require(amount <= availableRewards, "Cannot withdraw locked tokens");
         hachiToken.safeTransfer(owner(), amount);
     }
 }
